@@ -14,7 +14,312 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audits: {
+        Row: {
+          checklist: Json | null
+          created_at: string
+          date: string
+          etat_general: string | null
+          id: string
+          intervention_id: string | null
+          observations: string | null
+          photos: string[] | null
+          proprete: string | null
+          recommandations: string | null
+          securite: string | null
+          technician_id: string | null
+          usure: string | null
+        }
+        Insert: {
+          checklist?: Json | null
+          created_at?: string
+          date?: string
+          etat_general?: string | null
+          id?: string
+          intervention_id?: string | null
+          observations?: string | null
+          photos?: string[] | null
+          proprete?: string | null
+          recommandations?: string | null
+          securite?: string | null
+          technician_id?: string | null
+          usure?: string | null
+        }
+        Update: {
+          checklist?: Json | null
+          created_at?: string
+          date?: string
+          etat_general?: string | null
+          id?: string
+          intervention_id?: string | null
+          observations?: string | null
+          photos?: string[] | null
+          proprete?: string | null
+          recommandations?: string | null
+          securite?: string | null
+          technician_id?: string | null
+          usure?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audits_intervention_id_fkey"
+            columns: ["intervention_id"]
+            isOneToOne: false
+            referencedRelation: "interventions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audits_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "technicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          city: string
+          contact: string | null
+          created_at: string
+          email: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city: string
+          contact?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string
+          contact?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      devis: {
+        Row: {
+          client_id: string
+          created_at: string
+          date_creation: string
+          description: string | null
+          id: string
+          intervention_id: string | null
+          montant: number
+          numero_offre: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          date_creation?: string
+          description?: string | null
+          id?: string
+          intervention_id?: string | null
+          montant?: number
+          numero_offre: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          date_creation?: string
+          description?: string | null
+          id?: string
+          intervention_id?: string | null
+          montant?: number
+          numero_offre?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devis_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devis_intervention_id_fkey"
+            columns: ["intervention_id"]
+            isOneToOne: false
+            referencedRelation: "interventions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interventions: {
+        Row: {
+          client_id: string
+          created_at: string
+          date: string
+          description: string | null
+          duration: number | null
+          id: string
+          machine_id: string | null
+          notes: string | null
+          photos: string[] | null
+          status: string
+          technician_id: string | null
+          travel_time: number | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          date: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          machine_id?: string | null
+          notes?: string | null
+          photos?: string[] | null
+          status?: string
+          technician_id?: string | null
+          travel_time?: number | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          machine_id?: string | null
+          notes?: string | null
+          photos?: string[] | null
+          status?: string
+          technician_id?: string | null
+          travel_time?: number | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interventions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interventions_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interventions_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "technicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machines: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          install_date: string | null
+          model: string | null
+          name: string
+          serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          install_date?: string | null
+          model?: string | null
+          name: string
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          install_date?: string | null
+          model?: string | null
+          name?: string
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machines_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technicians: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          speciality: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          speciality?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          speciality?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useAppStore } from "@/lib/store";
+import { useClients, useMachines, useInterventions, useTechnicians, useAddAudit } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,16 +8,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { defaultAuditChecklist } from "@/lib/mock-data";
-import { Camera, CheckCircle, X } from "lucide-react";
+import { Camera, CheckCircle, X, Loader2 } from "lucide-react";
 import type { AuditChecklistItem } from "@/lib/types";
 
 export default function AuditPage() {
-  const { clients, machines, interventions, technicians } = useAppStore();
+  const { data: clients = [] } = useClients();
+  const { data: machines = [] } = useMachines();
+  const { data: interventions = [] } = useInterventions();
+  const { data: technicians = [] } = useTechnicians();
+  const addAudit = useAddAudit();
   const [selectedIntervention, setSelectedIntervention] = useState("");
-  const [etatGeneral, setEtatGeneral] = useState<string>("bon");
-  const [securite, setSecurite] = useState<string>("conforme");
-  const [proprete, setProprete] = useState<string>("bon");
-  const [usure, setUsure] = useState<string>("faible");
+  const [etatGeneral, setEtatGeneral] = useState("bon");
+  const [securite, setSecurite] = useState("conforme");
+  const [proprete, setProprete] = useState("bon");
+  const [usure, setUsure] = useState("faible");
   const [recommandations, setRecommandations] = useState("");
   const [observations, setObservations] = useState("");
   const [checklist, setChecklist] = useState<AuditChecklistItem[]>(defaultAuditChecklist.map(c => ({ ...c })));
@@ -25,43 +29,52 @@ export default function AuditPage() {
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const auditInterventions = interventions.filter(i => i.type === 'audit' || i.status !== 'terminee');
-
-  const toggleCheck = (id: string) => {
-    setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
-  };
-
-  const updateComment = (id: string, comment: string) => {
-    setChecklist(prev => prev.map(item => item.id === id ? { ...item, comment } : item));
-  };
+  const toggleCheck = (id: string) => setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+  const updateComment = (id: string, comment: string) => setChecklist(prev => prev.map(item => item.id === id ? { ...item, comment } : item));
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     Array.from(files).forEach(file => {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          setPhotos(prev => [...prev, ev.target!.result as string]);
-        }
-      };
+      reader.onload = (ev) => { if (ev.target?.result) setPhotos(prev => [...prev, ev.target!.result as string]); };
       reader.readAsDataURL(file);
     });
   };
 
-  const removePhoto = (index: number) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
-  };
+  const removePhoto = (index: number) => setPhotos(prev => prev.filter((_, i) => i !== index));
 
   const inter = interventions.find(i => i.id === selectedIntervention);
-  const client = inter ? clients.find(c => c.id === inter.clientId) : null;
-  const machine = inter ? machines.find(m => m.id === inter.machineId) : null;
-  const tech = inter ? technicians.find(t => t.id === inter.technicianId) : null;
+  const client = inter ? clients.find(c => c.id === inter.client_id) : null;
+  const machine = inter ? machines.find(m => m.id === inter.machine_id) : null;
+  const tech = inter ? technicians.find(t => t.id === inter.technician_id) : null;
+
+  const handleSubmit = () => {
+    if (!selectedIntervention) return;
+    addAudit.mutate({
+      intervention_id: selectedIntervention,
+      technician_id: inter?.technician_id || null,
+      date: new Date().toISOString().split('T')[0],
+      etat_general: etatGeneral,
+      securite,
+      proprete,
+      usure,
+      recommandations,
+      observations,
+      photos,
+      checklist: checklist as any,
+    }, {
+      onSuccess: () => {
+        setSubmitted(true);
+        setTimeout(() => setSubmitted(false), 3000);
+        setSelectedIntervention("");
+        setChecklist(defaultAuditChecklist.map(c => ({ ...c })));
+        setPhotos([]);
+        setObservations("");
+        setRecommandations("");
+      }
+    });
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -82,8 +95,8 @@ export default function AuditPage() {
         <Select value={selectedIntervention} onValueChange={setSelectedIntervention}>
           <SelectTrigger><SelectValue placeholder="Choisir une intervention..." /></SelectTrigger>
           <SelectContent>
-            {auditInterventions.map(i => {
-              const c = clients.find(cl => cl.id === i.clientId);
+            {interventions.map(i => {
+              const c = clients.find(cl => cl.id === i.client_id);
               return <SelectItem key={i.id} value={i.id}>{i.date} – {c?.name} – {i.description}</SelectItem>;
             })}
           </SelectContent>
@@ -101,49 +114,10 @@ export default function AuditPage() {
       <Card className="p-5 mb-4">
         <h2 className="font-semibold mb-3">État général</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label>État général</Label>
-            <Select value={etatGeneral} onValueChange={setEtatGeneral}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bon">Bon</SelectItem>
-                <SelectItem value="moyen">Moyen</SelectItem>
-                <SelectItem value="mauvais">Mauvais</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Sécurité</Label>
-            <Select value={securite} onValueChange={setSecurite}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="conforme">Conforme</SelectItem>
-                <SelectItem value="non-conforme">Non conforme</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Propreté</Label>
-            <Select value={proprete} onValueChange={setProprete}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bon">Bon</SelectItem>
-                <SelectItem value="moyen">Moyen</SelectItem>
-                <SelectItem value="mauvais">Mauvais</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Usure</Label>
-            <Select value={usure} onValueChange={setUsure}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="faible">Faible</SelectItem>
-                <SelectItem value="moyenne">Moyenne</SelectItem>
-                <SelectItem value="elevee">Élevée</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <div><Label>État général</Label><Select value={etatGeneral} onValueChange={setEtatGeneral}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bon">Bon</SelectItem><SelectItem value="moyen">Moyen</SelectItem><SelectItem value="mauvais">Mauvais</SelectItem></SelectContent></Select></div>
+          <div><Label>Sécurité</Label><Select value={securite} onValueChange={setSecurite}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="conforme">Conforme</SelectItem><SelectItem value="non-conforme">Non conforme</SelectItem></SelectContent></Select></div>
+          <div><Label>Propreté</Label><Select value={proprete} onValueChange={setProprete}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bon">Bon</SelectItem><SelectItem value="moyen">Moyen</SelectItem><SelectItem value="mauvais">Mauvais</SelectItem></SelectContent></Select></div>
+          <div><Label>Usure</Label><Select value={usure} onValueChange={setUsure}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="faible">Faible</SelectItem><SelectItem value="moyenne">Moyenne</SelectItem><SelectItem value="elevee">Élevée</SelectItem></SelectContent></Select></div>
         </div>
       </Card>
 
@@ -154,15 +128,8 @@ export default function AuditPage() {
             <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
               <Checkbox checked={item.checked} onCheckedChange={() => toggleCheck(item.id)} className="mt-0.5" />
               <div className="flex-1 min-w-0">
-                <label className="text-sm font-medium cursor-pointer" onClick={() => toggleCheck(item.id)}>
-                  {item.label}
-                </label>
-                <Input
-                  placeholder="Commentaire..."
-                  className="mt-1 h-8 text-xs"
-                  value={item.comment}
-                  onChange={e => updateComment(item.id, e.target.value)}
-                />
+                <label className="text-sm font-medium cursor-pointer" onClick={() => toggleCheck(item.id)}>{item.label}</label>
+                <Input placeholder="Commentaire..." className="mt-1 h-8 text-xs" value={item.comment} onChange={e => updateComment(item.id, e.target.value)} />
               </div>
             </div>
           ))}
@@ -172,18 +139,13 @@ export default function AuditPage() {
       <Card className="p-5 mb-4">
         <h2 className="font-semibold mb-3">Photos</h2>
         <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-        <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="mb-3">
-          <Camera className="w-4 h-4 mr-1" /> Ajouter des photos
-        </Button>
+        <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="mb-3"><Camera className="w-4 h-4 mr-1" /> Ajouter des photos</Button>
         {photos.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {photos.map((photo, i) => (
               <div key={i} className="relative group rounded-lg overflow-hidden border">
                 <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-32 object-cover" />
-                <button
-                  onClick={() => removePhoto(i)}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
+                <button onClick={() => removePhoto(i)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <X className="w-3 h-3 text-destructive-foreground" />
                 </button>
               </div>
@@ -200,8 +162,9 @@ export default function AuditPage() {
         </div>
       </Card>
 
-      <Button onClick={handleSubmit} className="w-full" size="lg">
-        <CheckCircle className="w-4 h-4 mr-2" /> Soumettre l'audit
+      <Button onClick={handleSubmit} className="w-full" size="lg" disabled={addAudit.isPending || !selectedIntervention}>
+        {addAudit.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+        Soumettre l'audit
       </Button>
     </div>
   );

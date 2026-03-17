@@ -1,46 +1,32 @@
-import { useAppStore } from "@/lib/store";
+import { useInterventions, useDevis, useTechnicians } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Clock, TrendingUp, ShoppingCart, Users } from "lucide-react";
+import { Clock, TrendingUp, ShoppingCart, Users, Loader2 } from "lucide-react";
 
 export default function TechniciansPage() {
-  const { technicians, interventions, devis } = useAppStore();
+  const { data: technicians = [], isLoading: lt } = useTechnicians();
+  const { data: interventions = [], isLoading: li } = useInterventions();
+  const { data: devis = [], isLoading: ld } = useDevis();
 
-  const HOURLY_RATE = 45; // €/h for travel cost
+  if (lt || li || ld) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+
+  const HOURLY_RATE = 45;
 
   const techData = technicians.map(tech => {
-    const techInterventions = interventions.filter(i => i.technicianId === tech.id);
-    const totalTravelMin = techInterventions.reduce((s, i) => s + i.travelTime, 0);
-    const totalWorkMin = techInterventions.reduce((s, i) => s + i.duration, 0);
+    const techInterventions = interventions.filter(i => i.technician_id === tech.id);
+    const totalTravelMin = techInterventions.reduce((s, i) => s + (i.travel_time || 0), 0);
+    const totalWorkMin = techInterventions.reduce((s, i) => s + (i.duration || 0), 0);
     const travelCost = Math.round((totalTravelMin / 60) * HOURLY_RATE);
-    const revenue = Math.round((totalWorkMin / 60) * HOURLY_RATE * 1.8); // markup
-    
+    const revenue = Math.round((totalWorkMin / 60) * HOURLY_RATE * 1.8);
     const techDevis = devis.filter(d => {
-      const inter = interventions.find(i => i.id === d.interventionId);
-      return inter?.technicianId === tech.id;
+      const inter = interventions.find(i => i.id === d.intervention_id);
+      return inter?.technician_id === tech.id;
     });
-    const additionalSales = techDevis.filter(d => d.status === 'accepte').reduce((s, d) => s + d.montant, 0);
-
-    return {
-      name: tech.name.split(' ')[0],
-      fullName: tech.name,
-      speciality: tech.speciality,
-      interventions: techInterventions.length,
-      travelTime: totalTravelMin,
-      workTime: totalWorkMin,
-      travelCost,
-      revenue,
-      additionalSales,
-      margin: revenue - travelCost,
-    };
+    const additionalSales = techDevis.filter(d => d.status === 'accepte').reduce((s, d) => s + Number(d.montant), 0);
+    return { name: tech.name.split(' ')[0], fullName: tech.name, speciality: tech.speciality, interventions: techInterventions.length, travelTime: totalTravelMin, workTime: totalWorkMin, travelCost, revenue, additionalSales, margin: revenue - travelCost };
   });
 
-  const chartData = techData.map(t => ({
-    name: t.name,
-    'Coûts déplacement': t.travelCost,
-    'Revenus interventions': t.revenue,
-    'Ventes additionnelles': t.additionalSales,
-  }));
+  const chartData = techData.map(t => ({ name: t.name, 'Coûts déplacement': t.travelCost, 'Revenus interventions': t.revenue, 'Ventes additionnelles': t.additionalSales }));
 
   return (
     <div>
@@ -50,42 +36,10 @@ export default function TechniciansPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-        <Card className="stat-card">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary" />
-            <div>
-              <p className="text-lg font-bold">{technicians.length}</p>
-              <p className="text-xs text-muted-foreground">Techniciens</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="stat-card">
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-warning" />
-            <div>
-              <p className="text-lg font-bold">{techData.reduce((s, t) => s + t.travelTime, 0)} min</p>
-              <p className="text-xs text-muted-foreground">Temps trajet total</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="stat-card">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-success" />
-            <div>
-              <p className="text-lg font-bold">{techData.reduce((s, t) => s + t.revenue, 0).toLocaleString()}€</p>
-              <p className="text-xs text-muted-foreground">Revenus totaux</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="stat-card">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-info" />
-            <div>
-              <p className="text-lg font-bold">{techData.reduce((s, t) => s + t.additionalSales, 0).toLocaleString()}€</p>
-              <p className="text-xs text-muted-foreground">Ventes additionnelles</p>
-            </div>
-          </div>
-        </Card>
+        <Card className="stat-card"><div className="flex items-center gap-2"><Users className="w-5 h-5 text-primary" /><div><p className="text-lg font-bold">{technicians.length}</p><p className="text-xs text-muted-foreground">Techniciens</p></div></div></Card>
+        <Card className="stat-card"><div className="flex items-center gap-2"><Clock className="w-5 h-5 text-warning" /><div><p className="text-lg font-bold">{techData.reduce((s, t) => s + t.travelTime, 0)} min</p><p className="text-xs text-muted-foreground">Temps trajet total</p></div></div></Card>
+        <Card className="stat-card"><div className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-success" /><div><p className="text-lg font-bold">{techData.reduce((s, t) => s + t.revenue, 0).toLocaleString()}€</p><p className="text-xs text-muted-foreground">Revenus totaux</p></div></div></Card>
+        <Card className="stat-card"><div className="flex items-center gap-2"><ShoppingCart className="w-5 h-5 text-info" /><div><p className="text-lg font-bold">{techData.reduce((s, t) => s + t.additionalSales, 0).toLocaleString()}€</p><p className="text-xs text-muted-foreground">Ventes additionnelles</p></div></div></Card>
       </div>
 
       <Card className="p-5 mb-6">

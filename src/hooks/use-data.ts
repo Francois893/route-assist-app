@@ -37,7 +37,7 @@ export function useClient(id: string | undefined) {
 export function useAddClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (client: Omit<DbClient, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (client: Partial<DbClient> & { name: string; city: string }) => {
       const { data, error } = await supabase.from("clients").insert(client).select().single();
       if (error) throw error;
       return data;

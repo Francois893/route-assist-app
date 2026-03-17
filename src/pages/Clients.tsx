@@ -1,37 +1,33 @@
 import { useState } from "react";
-import { useAppStore } from "@/lib/store";
+import { useClients, useMachines, useInterventions, useAddClient } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, ChevronRight, Building2 } from "lucide-react";
+import { Plus, Search, ChevronRight, Building2, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { Client } from "@/lib/types";
 
 export default function Clients() {
-  const { clients, machines, interventions, addClient } = useAppStore();
+  const { data: clients = [], isLoading } = useClients();
+  const { data: machines = [] } = useMachines();
+  const { data: interventions = [] } = useInterventions();
+  const addClient = useAddClient();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', address: '', city: '', phone: '', email: '', contact: '' });
 
   const filtered = clients.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.city.toLowerCase().includes(search.toLowerCase())
+    c.name.toLowerCase().includes(search.toLowerCase()) || c.city.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleAdd = () => {
     if (!form.name || !form.city) return;
-    const newClient: Client = {
-      id: `c${Date.now()}`,
-      ...form,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    addClient(newClient);
-    setForm({ name: '', address: '', city: '', phone: '', email: '', contact: '' });
-    setOpen(false);
+    addClient.mutate(form, { onSuccess: () => { setForm({ name: '', address: '', city: '', phone: '', email: '', contact: '' }); setOpen(false); } });
   };
+
+  if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   return (
     <div>
@@ -41,9 +37,7 @@ export default function Clients() {
           <p className="page-subtitle">{clients.length} clients enregistrés</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="w-4 h-4 mr-1" /> Nouveau client</Button>
-          </DialogTrigger>
+          <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-1" /> Nouveau client</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Ajouter un client</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -53,7 +47,7 @@ export default function Clients() {
               <div><Label>Téléphone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></div>
               <div><Label>Email</Label><Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></div>
               <div><Label>Contact</Label><Input value={form.contact} onChange={e => setForm({...form, contact: e.target.value})} /></div>
-              <Button onClick={handleAdd} className="w-full">Ajouter</Button>
+              <Button onClick={handleAdd} className="w-full" disabled={addClient.isPending}>Ajouter</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -66,20 +60,15 @@ export default function Clients() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map(client => {
-          const clientMachines = machines.filter(m => m.clientId === client.id);
-          const clientInterventions = interventions.filter(i => i.clientId === client.id);
+          const clientMachines = machines.filter(m => m.client_id === client.id);
+          const clientInterventions = interventions.filter(i => i.client_id === client.id);
           return (
             <Link key={client.id} to={`/clients/${client.id}`}>
               <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-accent" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm">{client.name}</h3>
-                      <p className="text-xs text-muted-foreground">{client.city}</p>
-                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center"><Building2 className="w-5 h-5 text-accent" /></div>
+                    <div><h3 className="font-semibold text-sm">{client.name}</h3><p className="text-xs text-muted-foreground">{client.city}</p></div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
@@ -88,9 +77,7 @@ export default function Clients() {
                   <span>{clientInterventions.length} intervention{clientInterventions.length > 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex gap-1 mt-2 flex-wrap">
-                  {clientMachines.slice(0, 3).map(m => (
-                    <StatusBadge key={m.id} status={m.status} />
-                  ))}
+                  {clientMachines.slice(0, 3).map(m => <StatusBadge key={m.id} status={m.status} />)}
                 </div>
               </Card>
             </Link>

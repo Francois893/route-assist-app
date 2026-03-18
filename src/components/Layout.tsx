@@ -5,12 +5,12 @@ import { Outlet } from "react-router-dom";
 export default function Layout() {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b bg-card px-4 shrink-0">
+          <header className="h-14 flex items-center border-b border-border/50 bg-card/50 backdrop-blur-xl px-4 shrink-0 sticky top-0 z-30">
             <SidebarTrigger className="mr-4" />
-            <span className="text-sm text-muted-foreground font-medium">Gestion d'interventions techniques</span>
+            <span className="text-sm text-muted-foreground font-medium tracking-wide">Gestion d'interventions techniques</span>
           </header>
           <main className="flex-1 p-4 md:p-6 overflow-auto">
             <Outlet />

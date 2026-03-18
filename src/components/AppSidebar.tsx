@@ -35,35 +35,34 @@ const items = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent className="pt-4">
-        <div className={`px-4 mb-6 flex items-center gap-2 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <Wrench className="w-4 h-4 text-sidebar-primary-foreground" />
+      <SidebarContent className="pt-6">
+        <div className={`px-4 mb-8 flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <Wrench className="w-4 h-4 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <span className="font-bold text-sm text-sidebar-accent-foreground tracking-wide">
+            <span className="font-bold text-base text-sidebar-accent-foreground tracking-wide">
               TechField
             </span>
           )}
         </div>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1 px-2">
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className="hover:bg-sidebar-accent/50"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      className="rounded-xl px-3 py-2.5 transition-all duration-200 hover:bg-sidebar-accent/60"
+                      activeClassName="bg-primary/15 text-primary font-medium shadow-sm"
                     >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className="mr-3 h-4 w-4" />
+                      {!collapsed && <span className="text-sm">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -6,6 +6,7 @@ import {
   MapPin,
   FileText,
   BarChart3,
+  Cpu,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";

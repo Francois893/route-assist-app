@@ -12,6 +12,7 @@ import AuditPage from "@/pages/AuditPage";
 import RoutePlanning from "@/pages/RoutePlanning";
 import DevisPage from "@/pages/DevisPage";
 import TechniciansPage from "@/pages/TechniciansPage";
+import MachinesPage from "@/pages/MachinesPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();

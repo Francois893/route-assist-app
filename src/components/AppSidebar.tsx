@@ -6,6 +6,7 @@ import {
   MapPin,
   FileText,
   BarChart3,
+  Cpu,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -23,6 +24,7 @@ import {
 const items = [
   { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
   { title: "Clients", url: "/clients", icon: Users },
+  { title: "Machines", url: "/machines", icon: Cpu },
   { title: "Interventions", url: "/interventions", icon: Wrench },
   { title: "Audit", url: "/audit", icon: ClipboardCheck },
   { title: "Tournées", url: "/tournees", icon: MapPin },

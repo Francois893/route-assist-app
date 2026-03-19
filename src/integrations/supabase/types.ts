@@ -22,6 +22,7 @@ export type Database = {
           etat_general: string | null
           id: string
           intervention_id: string | null
+          machine_ids: string[] | null
           observations: string | null
           photos: string[] | null
           proprete: string | null
@@ -37,6 +38,7 @@ export type Database = {
           etat_general?: string | null
           id?: string
           intervention_id?: string | null
+          machine_ids?: string[] | null
           observations?: string | null
           photos?: string[] | null
           proprete?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           etat_general?: string | null
           id?: string
           intervention_id?: string | null
+          machine_ids?: string[] | null
           observations?: string | null
           photos?: string[] | null
           proprete?: string | null
@@ -182,6 +185,7 @@ export type Database = {
           duration: number | null
           id: string
           machine_id: string | null
+          machine_ids: string[] | null
           notes: string | null
           photos: string[] | null
           status: string
@@ -198,6 +202,7 @@ export type Database = {
           duration?: number | null
           id?: string
           machine_id?: string | null
+          machine_ids?: string[] | null
           notes?: string | null
           photos?: string[] | null
           status?: string
@@ -214,6 +219,7 @@ export type Database = {
           duration?: number | null
           id?: string
           machine_id?: string | null
+          machine_ids?: string[] | null
           notes?: string | null
           photos?: string[] | null
           status?: string

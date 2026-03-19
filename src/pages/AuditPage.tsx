@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { defaultAuditChecklist } from "@/lib/mock-data";
-import { Camera, CheckCircle, X, Loader2 } from "lucide-react";
+import { Camera, CheckCircle, X, Loader2, Wrench } from "lucide-react";
 import type { AuditChecklistItem } from "@/lib/types";
 
 export default function AuditPage() {
@@ -18,6 +18,7 @@ export default function AuditPage() {
   const { data: technicians = [] } = useTechnicians();
   const addAudit = useAddAudit();
   const [selectedIntervention, setSelectedIntervention] = useState("");
+  const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
   const [etatGeneral, setEtatGeneral] = useState("bon");
   const [securite, setSecurite] = useState("conforme");
   const [proprete, setProprete] = useState("bon");
@@ -46,8 +47,28 @@ export default function AuditPage() {
 
   const inter = interventions.find(i => i.id === selectedIntervention);
   const client = inter ? clients.find(c => c.id === inter.client_id) : null;
-  const machine = inter ? machines.find(m => m.id === inter.machine_id) : null;
   const tech = inter ? technicians.find(t => t.id === inter.technician_id) : null;
+
+  // When selecting an intervention, pre-fill machines from it
+  const handleSelectIntervention = (id: string) => {
+    setSelectedIntervention(id);
+    const found = interventions.find(i => i.id === id);
+    if (found) {
+      const ids: string[] = (found as any).machine_ids?.length
+        ? (found as any).machine_ids
+        : found.machine_id ? [found.machine_id] : [];
+      setSelectedMachineIds(ids);
+    }
+  };
+
+  // Get machines for the selected intervention's client
+  const clientMachines = inter ? machines.filter(m => m.client_id === inter.client_id) : [];
+
+  const toggleMachine = (machineId: string) => {
+    setSelectedMachineIds(prev =>
+      prev.includes(machineId) ? prev.filter(id => id !== machineId) : [...prev, machineId]
+    );
+  };
 
   const handleSubmit = () => {
     if (!selectedIntervention) return;
@@ -63,11 +84,13 @@ export default function AuditPage() {
       observations,
       photos,
       checklist: checklist as any,
+      machine_ids: selectedMachineIds,
     }, {
       onSuccess: () => {
         setSubmitted(true);
         setTimeout(() => setSubmitted(false), 3000);
         setSelectedIntervention("");
+        setSelectedMachineIds([]);
         setChecklist(defaultAuditChecklist.map(c => ({ ...c })));
         setPhotos([]);
         setObservations("");
@@ -92,7 +115,7 @@ export default function AuditPage() {
 
       <Card className="p-5 mb-4">
         <h2 className="font-semibold mb-3">Sélection de l'intervention</h2>
-        <Select value={selectedIntervention} onValueChange={setSelectedIntervention}>
+        <Select value={selectedIntervention} onValueChange={handleSelectIntervention}>
           <SelectTrigger><SelectValue placeholder="Choisir une intervention..." /></SelectTrigger>
           <SelectContent>
             {interventions.map(i => {
@@ -104,12 +127,37 @@ export default function AuditPage() {
         {inter && (
           <div className="mt-3 text-sm text-muted-foreground grid grid-cols-2 gap-2">
             <span>Client: {client?.name}</span>
-            <span>Machine: {machine?.name}</span>
             <span>Technicien: {tech?.name}</span>
             <span>Date: {inter.date}</span>
           </div>
         )}
       </Card>
+
+      {/* Machine selection for audit */}
+      {inter && (
+        <Card className="p-5 mb-4">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            <Wrench className="w-4 h-4 text-primary" />
+            Machines auditées ({selectedMachineIds.length})
+          </h2>
+          {clientMachines.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune machine pour ce client</p>
+          ) : (
+            <div className="space-y-1.5">
+              {clientMachines.map(m => (
+                <label key={m.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/30 cursor-pointer text-sm">
+                  <Checkbox
+                    checked={selectedMachineIds.includes(m.id)}
+                    onCheckedChange={() => toggleMachine(m.id)}
+                  />
+                  <span>{m.name}</span>
+                  {m.model && <span className="text-xs text-muted-foreground">({m.model})</span>}
+                </label>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card className="p-5 mb-4">
         <h2 className="font-semibold mb-3">État général</h2>

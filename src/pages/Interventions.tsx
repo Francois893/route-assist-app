@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Loader2 } from "lucide-react";
+import { Plus, Search, Loader2, Wrench } from "lucide-react";
 import type { DbIntervention } from "@/hooks/use-data";
 
 export default function Interventions() {
@@ -23,11 +24,20 @@ export default function Interventions() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    client_id: '', machine_id: '' as string | null, technician_id: '' as string | null, date: '',
+    client_id: '', machine_ids: [] as string[], technician_id: '' as string | null, date: '',
     type: 'preventive', description: '', duration: 0, travel_time: 0, notes: ''
   });
 
   const clientMachines = allMachines.filter(m => m.client_id === form.client_id);
+
+  const toggleMachine = (machineId: string) => {
+    setForm(prev => ({
+      ...prev,
+      machine_ids: prev.machine_ids.includes(machineId)
+        ? prev.machine_ids.filter(id => id !== machineId)
+        : [...prev.machine_ids, machineId]
+    }));
+  };
 
   const filtered = interventions.filter(i => {
     const client = clients.find(c => c.id === i.client_id);
@@ -38,17 +48,25 @@ export default function Interventions() {
 
   const handleSubmit = () => {
     if (!form.client_id || !form.date) return;
+    const payload = {
+      ...form,
+      machine_id: form.machine_ids[0] || null,
+      machine_ids: form.machine_ids,
+    };
     if (editId) {
-      updateIntervention.mutate({ id: editId, ...form }, { onSuccess: () => { setOpen(false); setEditId(null); } });
+      updateIntervention.mutate({ id: editId, ...payload }, { onSuccess: () => { setOpen(false); setEditId(null); } });
     } else {
-      addIntervention.mutate({ ...form, status: 'planifiee', photos: [] }, { onSuccess: () => { setOpen(false); } });
+      addIntervention.mutate({ ...payload, status: 'planifiee', photos: [] } as any, { onSuccess: () => { setOpen(false); } });
     }
   };
 
   const openEdit = (inter: DbIntervention) => {
     setEditId(inter.id);
+    const machineIds = (inter as any).machine_ids?.length
+      ? (inter as any).machine_ids
+      : inter.machine_id ? [inter.machine_id] : [];
     setForm({
-      client_id: inter.client_id, machine_id: inter.machine_id, technician_id: inter.technician_id,
+      client_id: inter.client_id, machine_ids: machineIds, technician_id: inter.technician_id,
       date: inter.date, type: inter.type, description: inter.description || '',
       duration: inter.duration || 0, travel_time: inter.travel_time || 0, notes: inter.notes || ''
     });
@@ -57,6 +75,13 @@ export default function Interventions() {
 
   const changeStatus = (id: string, status: string) => {
     updateIntervention.mutate({ id, status });
+  };
+
+  const getMachineNames = (inter: DbIntervention) => {
+    const ids: string[] = (inter as any).machine_ids?.length
+      ? (inter as any).machine_ids
+      : inter.machine_id ? [inter.machine_id] : [];
+    return ids.map(id => allMachines.find(m => m.id === id)?.name).filter(Boolean).join(", ") || "—";
   };
 
   if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -70,7 +95,7 @@ export default function Interventions() {
         </div>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditId(null); }}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditId(null); setForm({ client_id: '', machine_id: null, technician_id: null, date: '', type: 'preventive', description: '', duration: 0, travel_time: 0, notes: '' }); }}>
+            <Button onClick={() => { setEditId(null); setForm({ client_id: '', machine_ids: [], technician_id: null, date: '', type: 'preventive', description: '', duration: 0, travel_time: 0, notes: '' }); }}>
               <Plus className="w-4 h-4 mr-1" /> Nouvelle intervention
             </Button>
           </DialogTrigger>
@@ -79,17 +104,31 @@ export default function Interventions() {
             <div className="space-y-3">
               <div>
                 <Label>Client *</Label>
-                <Select value={form.client_id} onValueChange={v => setForm({...form, client_id: v, machine_id: null})}>
+                <Select value={form.client_id} onValueChange={v => setForm({...form, client_id: v, machine_ids: []})}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
                   <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Machine</Label>
-                <Select value={form.machine_id || ''} onValueChange={v => setForm({...form, machine_id: v || null})}>
-                  <SelectTrigger><SelectValue placeholder="Sélectionner une machine" /></SelectTrigger>
-                  <SelectContent>{clientMachines.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label className="flex items-center gap-1.5 mb-2"><Wrench className="w-3.5 h-3.5" /> Machines ({form.machine_ids.length} sélectionnée{form.machine_ids.length > 1 ? 's' : ''})</Label>
+                {clientMachines.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {form.client_id ? "Aucune machine pour ce client" : "Sélectionnez d'abord un client"}
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto rounded-xl border border-border/50 p-2">
+                    {clientMachines.map(m => (
+                      <label key={m.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/30 cursor-pointer text-sm">
+                        <Checkbox
+                          checked={form.machine_ids.includes(m.id)}
+                          onCheckedChange={() => toggleMachine(m.id)}
+                        />
+                        <span>{m.name}</span>
+                        {m.model && <span className="text-xs text-muted-foreground">({m.model})</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <Label>Technicien</Label>
@@ -119,7 +158,7 @@ export default function Interventions() {
               {editId && (
                 <div>
                   <Label>Statut</Label>
-                  <Select value={form.type === form.type ? (interventions.find(i => i.id === editId)?.status || 'planifiee') : 'planifiee'} onValueChange={v => changeStatus(editId, v)}>
+                  <Select value={interventions.find(i => i.id === editId)?.status || 'planifiee'} onValueChange={v => changeStatus(editId, v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="planifiee">Planifiée</SelectItem>
@@ -160,7 +199,7 @@ export default function Interventions() {
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Date</th>
                 <th className="text-left px-4 py-3 font-medium">Client</th>
-                <th className="text-left px-4 py-3 font-medium">Machine</th>
+                <th className="text-left px-4 py-3 font-medium">Machines</th>
                 <th className="text-left px-4 py-3 font-medium">Type</th>
                 <th className="text-left px-4 py-3 font-medium">Technicien</th>
                 <th className="text-left px-4 py-3 font-medium">Statut</th>
@@ -170,13 +209,12 @@ export default function Interventions() {
             <tbody>
               {filtered.map(inter => {
                 const client = clients.find(c => c.id === inter.client_id);
-                const machine = allMachines.find(m => m.id === inter.machine_id);
                 const tech = technicians.find(t => t.id === inter.technician_id);
                 return (
                   <tr key={inter.id} className="border-t hover:bg-muted/30">
                     <td className="px-4 py-3">{inter.date}</td>
                     <td className="px-4 py-3 font-medium">{client?.name}</td>
-                    <td className="px-4 py-3">{machine?.name}</td>
+                    <td className="px-4 py-3 text-xs">{getMachineNames(inter)}</td>
                     <td className="px-4 py-3"><StatusBadge status={inter.type} /></td>
                     <td className="px-4 py-3">{tech?.name}</td>
                     <td className="px-4 py-3"><StatusBadge status={inter.status} /></td>

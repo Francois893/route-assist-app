@@ -9,6 +9,7 @@ import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
 import Interventions from "@/pages/Interventions";
 import AuditPage from "@/pages/AuditPage";
+import AuditHistoryPage from "@/pages/AuditHistoryPage";
 import RoutePlanning from "@/pages/RoutePlanning";
 import DevisPage from "@/pages/DevisPage";
 import TechniciansPage from "@/pages/TechniciansPage";

@@ -168,6 +168,30 @@ export function useUpdateDevis() {
 }
 
 // ---- Audits ----
+export function useAudits() {
+  return useQuery({
+    queryKey: ["audits"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("audits").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useAudit(id: string | undefined) {
+  return useQuery({
+    queryKey: ["audits", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase.from("audits").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+}
+
 export function useAddAudit() {
   const qc = useQueryClient();
   return useMutation({

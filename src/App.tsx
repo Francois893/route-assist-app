@@ -9,6 +9,7 @@ import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
 import Interventions from "@/pages/Interventions";
 import AuditPage from "@/pages/AuditPage";
+import AuditHistoryPage from "@/pages/AuditHistoryPage";
 import RoutePlanning from "@/pages/RoutePlanning";
 import DevisPage from "@/pages/DevisPage";
 import TechniciansPage from "@/pages/TechniciansPage";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/machines" element={<MachinesPage />} />
             <Route path="/interventions" element={<Interventions />} />
             <Route path="/audit" element={<AuditPage />} />
+            <Route path="/audits" element={<AuditHistoryPage />} />
             <Route path="/tournees" element={<RoutePlanning />} />
             <Route path="/devis" element={<DevisPage />} />
             <Route path="/techniciens" element={<TechniciansPage />} />

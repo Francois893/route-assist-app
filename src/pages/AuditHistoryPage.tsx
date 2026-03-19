@@ -21,21 +21,38 @@ export default function AuditHistoryPage() {
   const [search, setSearch] = useState("");
   const [selectedAudit, setSelectedAudit] = useState<DbAudit | null>(null);
 
+  const getAuditMachines = (audit: DbAudit) => {
+    const ids: string[] = (audit as any).machine_ids?.length
+      ? (audit as any).machine_ids
+      : [];
+    // Fallback to intervention's machines
+    if (ids.length === 0) {
+      const inter = interventions.find(i => i.id === audit.intervention_id);
+      if (inter) {
+        const interIds: string[] = (inter as any).machine_ids?.length
+          ? (inter as any).machine_ids
+          : inter.machine_id ? [inter.machine_id] : [];
+        return interIds.map(id => machines.find(m => m.id === id)).filter(Boolean);
+      }
+    }
+    return ids.map(id => machines.find(m => m.id === id)).filter(Boolean);
+  };
+
   const getAuditContext = (audit: DbAudit) => {
     const inter = interventions.find(i => i.id === audit.intervention_id);
     const client = inter ? clients.find(c => c.id === inter.client_id) : null;
-    const machine = inter ? machines.find(m => m.id === inter.machine_id) : null;
+    const auditMachines = getAuditMachines(audit);
     const tech = technicians.find(t => t.id === audit.technician_id);
-    return { inter, client, machine, tech };
+    return { inter, client, machines: auditMachines, tech };
   };
 
   const filtered = audits.filter(a => {
     if (!search) return true;
     const q = search.toLowerCase();
-    const { client, machine, tech } = getAuditContext(a);
+    const { client, machines: ms, tech } = getAuditContext(a);
     return (
       client?.name?.toLowerCase().includes(q) ||
-      machine?.name?.toLowerCase().includes(q) ||
+      ms.some((m: any) => m?.name?.toLowerCase().includes(q)) ||
       tech?.name?.toLowerCase().includes(q) ||
       a.date?.toLowerCase().includes(q)
     );
@@ -49,7 +66,8 @@ export default function AuditHistoryPage() {
   const securiteColor = (v: string | null) => v === "conforme" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-red-500/15 text-red-400 border-red-500/20";
 
   const exportPDF = (audit: DbAudit) => {
-    const { client, machine, tech, inter } = getAuditContext(audit);
+    const { client, machines: auditMachines, tech, inter } = getAuditContext(audit);
+    const machineNames = auditMachines.map((m: any) => m?.name).filter(Boolean).join(", ") || "—";
     const doc = new jsPDF();
     const pageW = doc.internal.pageSize.getWidth();
     let y = 20;
@@ -57,7 +75,6 @@ export default function AuditHistoryPage() {
     const margin = 20;
     const contentW = pageW - margin * 2;
 
-    // Header
     doc.setFillColor(20, 24, 31);
     doc.rect(0, 0, pageW, 45, "F");
     doc.setFillColor(249, 115, 22);
@@ -76,7 +93,6 @@ export default function AuditHistoryPage() {
 
     y = 58;
 
-    // Info block
     const drawInfoBlock = (title: string, items: [string, string][]) => {
       doc.setFillColor(30, 35, 45);
       doc.roundedRect(margin, y, contentW, 10 + items.length * lh, 3, 3, "F");
@@ -100,7 +116,7 @@ export default function AuditHistoryPage() {
 
     drawInfoBlock("INFORMATIONS GÉNÉRALES", [
       ["Client :", client?.name || "—"],
-      ["Machine :", machine?.name || "—"],
+      ["Machines :", machineNames],
       ["Technicien :", tech?.name || "—"],
       ["Intervention :", inter?.description || "—"],
     ]);
@@ -112,7 +128,6 @@ export default function AuditHistoryPage() {
       ["Usure :", usureLabel[audit.usure || ""] || "—"],
     ]);
 
-    // Checklist
     const checklist = (audit.checklist as any[]) || [];
     if (checklist.length > 0) {
       doc.setFillColor(30, 35, 45);
@@ -144,7 +159,6 @@ export default function AuditHistoryPage() {
       y += 5;
     }
 
-    // Observations & Recommandations
     const drawTextBlock = (title: string, text: string) => {
       if (!text) return;
       if (y > 240) { doc.addPage(); y = 20; }
@@ -166,7 +180,6 @@ export default function AuditHistoryPage() {
     drawTextBlock("OBSERVATIONS", audit.observations || "");
     drawTextBlock("RECOMMANDATIONS", audit.recommandations || "");
 
-    // Footer
     const pageH = doc.internal.pageSize.getHeight();
     doc.setFillColor(249, 115, 22);
     doc.rect(0, pageH - 12, pageW, 12, "F");
@@ -195,12 +208,7 @@ export default function AuditHistoryPage() {
 
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher par client, machine, technicien..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-10 rounded-xl"
-        />
+        <Input placeholder="Rechercher par client, machine, technicien..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 rounded-xl" />
       </div>
 
       {isLoading ? (
@@ -213,7 +221,8 @@ export default function AuditHistoryPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map(audit => {
-            const { client, machine, tech } = getAuditContext(audit);
+            const { client, machines: auditMachines, tech } = getAuditContext(audit);
+            const machineNames = auditMachines.map((m: any) => m?.name).filter(Boolean).join(", ");
             return (
               <Card key={audit.id} className="p-4 hover:border-primary/30 transition-colors">
                 <div className="flex items-start justify-between gap-3">
@@ -238,10 +247,10 @@ export default function AuditHistoryPage() {
                           {tech.name}
                         </span>
                       )}
-                      {machine && (
+                      {machineNames && (
                         <span className="flex items-center gap-1">
                           <Wrench className="w-3 h-3" />
-                          {machine.name}
+                          {machineNames}
                         </span>
                       )}
                     </div>
@@ -261,11 +270,11 @@ export default function AuditHistoryPage() {
         </div>
       )}
 
-      {/* Detail Dialog */}
       <Dialog open={!!selectedAudit} onOpenChange={() => setSelectedAudit(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {selectedAudit && (() => {
-            const { client, machine, tech, inter } = getAuditContext(selectedAudit);
+            const { client, machines: auditMachines, tech, inter } = getAuditContext(selectedAudit);
+            const machineNames = auditMachines.map((m: any) => m?.name).filter(Boolean).join(", ") || "—";
             const checklist = (selectedAudit.checklist as any[]) || [];
             return (
               <>
@@ -285,11 +294,11 @@ export default function AuditHistoryPage() {
                     <span className="text-xs text-muted-foreground">Technicien</span>
                     <p className="font-medium">{tech?.name || "—"}</p>
                   </div>
-                  <div className="p-3 rounded-xl bg-muted/30">
-                    <span className="text-xs text-muted-foreground">Machine</span>
-                    <p className="font-medium">{machine?.name || "—"}</p>
+                  <div className="p-3 rounded-xl bg-muted/30 col-span-2">
+                    <span className="text-xs text-muted-foreground">Machines</span>
+                    <p className="font-medium">{machineNames}</p>
                   </div>
-                  <div className="p-3 rounded-xl bg-muted/30">
+                  <div className="p-3 rounded-xl bg-muted/30 col-span-2">
                     <span className="text-xs text-muted-foreground">Intervention</span>
                     <p className="font-medium truncate">{inter?.description || "—"}</p>
                   </div>

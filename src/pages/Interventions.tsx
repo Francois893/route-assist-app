@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Loader2, Wrench, MoreHorizontal, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, Loader2, Wrench, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { DbIntervention } from "@/hooks/use-data";
@@ -28,7 +28,6 @@ const STATUS_ORDER = [
   { key: "terminee", label: "Terminée" },
 ];
 
-// Map old types to new sections
 function getSection(type: string): string {
   if (type === "preventive" || type === "installation") return "installation";
   if (type === "corrective" || type === "assistance") return "assistance";
@@ -66,10 +65,6 @@ export default function Interventions() {
 
   const clientMachines = allMachines.filter(m => m.client_id === form.client_id);
 
-  const toggleSection = (key: string) => {
-    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const toggleMachine = (machineId: string) => {
     setForm(prev => ({
       ...prev,
@@ -80,6 +75,7 @@ export default function Interventions() {
   };
 
   const filtered = interventions.filter(i => {
+    if (!search) return true;
     const client = clients.find(c => c.id === i.client_id);
     return (
       client?.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -88,7 +84,7 @@ export default function Interventions() {
   });
 
   const handleSubmit = () => {
-    if (!form.client_id || !form.date) return;
+    if (!form.client_id) return;
     const payload = {
       ...form,
       machine_id: form.machine_ids[0] || null,
@@ -103,11 +99,11 @@ export default function Interventions() {
 
   const openEdit = (inter: DbIntervention) => {
     setEditId(inter.id);
-    const machineIds = (inter as any).machine_ids?.length
-      ? (inter as any).machine_ids
+    const machineIds = inter.machine_ids?.length
+      ? inter.machine_ids
       : inter.machine_id ? [inter.machine_id] : [];
     setForm({
-      client_id: inter.client_id, machine_ids: machineIds, technician_id: inter.technician_id,
+      client_id: inter.client_id, machine_ids: machineIds as string[], technician_id: inter.technician_id,
       date: inter.date, type: inter.type, description: inter.description || '',
       duration: inter.duration || 0, travel_time: inter.travel_time || 0, notes: inter.notes || ''
     });
@@ -134,7 +130,7 @@ export default function Interventions() {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editId ? 'Modifier' : 'Nouvelle'} intervention</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editId ? 'Modifier / Planifier' : 'Nouvelle'} intervention</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div>
                 <Label>Client *</Label>
@@ -207,6 +203,12 @@ export default function Interventions() {
         </Dialog>
       </div>
 
+      {/* Global search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input className="pl-9 rounded-xl" placeholder="Rechercher un client..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
       {/* Sections */}
       <div className="space-y-4">
         {SECTIONS.map(section => {
@@ -215,32 +217,25 @@ export default function Interventions() {
 
           return (
             <Card key={section.key} className="overflow-hidden">
-              {/* Section header as toggle */}
-              <button
-                onClick={() => toggleSection(section.key)}
-                className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
-              >
+              <div className="flex items-center justify-between p-4">
                 <span className="font-semibold text-base">{section.label}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">{sectionInterventions.length}</span>
-                  <Switch checked={isOpen} onCheckedChange={() => toggleSection(section.key)} />
+                  <Switch
+                    checked={isOpen}
+                    onCheckedChange={(checked) => setOpenSections(prev => ({ ...prev, [section.key]: checked }))}
+                  />
                 </div>
-              </button>
+              </div>
 
-              {/* Section content */}
               {isOpen && sectionInterventions.length > 0 && (
                 <div className="px-4 pb-4">
-                  <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input className="pl-9 rounded-xl" placeholder="Recherche" value={search} onChange={e => setSearch(e.target.value)} />
-                  </div>
-
                   {STATUS_ORDER.map(status => {
                     const statusInterventions = sectionInterventions.filter(i => i.status === status.key);
                     if (statusInterventions.length === 0) return null;
 
                     return (
-                      <div key={status.key} className="mb-4">
+                      <div key={status.key} className="mb-4 last:mb-0">
                         <h3 className="font-bold text-sm mb-2">{status.label}</h3>
                         <div className="space-y-1">
                           {statusInterventions.map(inter => {
@@ -248,11 +243,15 @@ export default function Interventions() {
                             const tech = technicians.find(t => t.id === inter.technician_id);
                             const techColor = inter.technician_id ? techColorMap.get(inter.technician_id) || "bg-muted" : "bg-muted";
                             const dateStr = inter.date
-                              ? new Date(inter.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                              ? new Date(inter.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
                               : "";
 
                             return (
-                              <div key={inter.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/30 transition-colors group">
+                              <div
+                                key={inter.id}
+                                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/30 transition-colors group cursor-pointer"
+                                onClick={() => openEdit(inter)}
+                              >
                                 <Avatar className="h-10 w-10 shrink-0">
                                   <AvatarFallback className={`${techColor} text-white text-xs font-medium`}>
                                     {tech ? getInitials(tech.name) : "?"}
@@ -268,15 +267,20 @@ export default function Interventions() {
                                 </div>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => openEdit(inter)}>Modifier</DropdownMenuItem>
-                                    {inter.status === "planifiee" && <DropdownMenuItem onClick={() => changeStatus(inter.id, "en-cours")}>Démarrer</DropdownMenuItem>}
-                                    {inter.status === "en-cours" && <DropdownMenuItem onClick={() => changeStatus(inter.id, "terminee")}>Terminer</DropdownMenuItem>}
-                                    {inter.status !== "a-planifier" && <DropdownMenuItem onClick={() => changeStatus(inter.id, "a-planifier")}>A planifier</DropdownMenuItem>}
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(inter); }}>Modifier</DropdownMenuItem>
+                                    {inter.status === "planifiee" && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(inter.id, "en-cours"); }}>Démarrer</DropdownMenuItem>}
+                                    {inter.status === "en-cours" && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(inter.id, "terminee"); }}>Terminer</DropdownMenuItem>}
+                                    {inter.status !== "a-planifier" && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); changeStatus(inter.id, "a-planifier"); }}>A planifier</DropdownMenuItem>}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>

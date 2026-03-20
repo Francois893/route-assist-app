@@ -28,6 +28,7 @@ const items = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Machines", url: "/machines", icon: Cpu },
   { title: "Interventions", url: "/interventions", icon: Wrench },
+  { title: "Planning", url: "/planning", icon: CalendarDays },
   { title: "Audit", url: "/audit", icon: ClipboardCheck },
   { title: "Historique audits", url: "/audits", icon: History },
   { title: "Tournées", url: "/tournees", icon: MapPin },

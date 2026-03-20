@@ -7,10 +7,44 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { StatusBadge } from "@/components/StatusBadge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Loader2, Wrench } from "lucide-react";
+import { Plus, Search, Loader2, Wrench, MoreHorizontal, ChevronDown, ChevronRight } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { DbIntervention } from "@/hooks/use-data";
+
+const SECTIONS = [
+  { key: "installation", label: "Installation" },
+  { key: "assistance", label: "Assistance" },
+  { key: "audit", label: "Audit / Visite" },
+  { key: "atelier", label: "Atelier" },
+] as const;
+
+const STATUS_ORDER = [
+  { key: "planifiee", label: "Planifié" },
+  { key: "a-planifier", label: "A planifier" },
+  { key: "en-cours", label: "En cours" },
+  { key: "terminee", label: "Terminée" },
+];
+
+// Map old types to new sections
+function getSection(type: string): string {
+  if (type === "preventive" || type === "installation") return "installation";
+  if (type === "corrective" || type === "assistance") return "assistance";
+  if (type === "audit") return "audit";
+  if (type === "atelier") return "atelier";
+  return "installation";
+}
+
+function getInitials(name: string) {
+  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+const TECH_COLORS = [
+  "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500",
+  "bg-violet-500", "bg-cyan-500", "bg-orange-500", "bg-teal-500",
+];
 
 export default function Interventions() {
   const { data: clients = [] } = useClients();
@@ -20,15 +54,21 @@ export default function Interventions() {
   const addIntervention = useAddIntervention();
   const updateIntervention = useUpdateIntervention();
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    installation: true, assistance: true, audit: true, atelier: true,
+  });
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     client_id: '', machine_ids: [] as string[], technician_id: '' as string | null, date: '',
-    type: 'preventive', description: '', duration: 0, travel_time: 0, notes: ''
+    type: 'installation', description: '', duration: 0, travel_time: 0, notes: ''
   });
 
   const clientMachines = allMachines.filter(m => m.client_id === form.client_id);
+
+  const toggleSection = (key: string) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const toggleMachine = (machineId: string) => {
     setForm(prev => ({
@@ -41,9 +81,10 @@ export default function Interventions() {
 
   const filtered = interventions.filter(i => {
     const client = clients.find(c => c.id === i.client_id);
-    const matchSearch = client?.name.toLowerCase().includes(search.toLowerCase()) || (i.description || '').toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === 'all' || i.status === filterStatus;
-    return matchSearch && matchStatus;
+    return (
+      client?.name.toLowerCase().includes(search.toLowerCase()) ||
+      (i.description || '').toLowerCase().includes(search.toLowerCase())
+    );
   });
 
   const handleSubmit = () => {
@@ -56,7 +97,7 @@ export default function Interventions() {
     if (editId) {
       updateIntervention.mutate({ id: editId, ...payload }, { onSuccess: () => { setOpen(false); setEditId(null); } });
     } else {
-      addIntervention.mutate({ ...payload, status: 'planifiee', photos: [] } as any, { onSuccess: () => { setOpen(false); } });
+      addIntervention.mutate({ ...payload, status: form.date ? 'planifiee' : 'a-planifier', photos: [] } as any, { onSuccess: () => { setOpen(false); } });
     }
   };
 
@@ -77,26 +118,19 @@ export default function Interventions() {
     updateIntervention.mutate({ id, status });
   };
 
-  const getMachineNames = (inter: DbIntervention) => {
-    const ids: string[] = (inter as any).machine_ids?.length
-      ? (inter as any).machine_ids
-      : inter.machine_id ? [inter.machine_id] : [];
-    return ids.map(id => allMachines.find(m => m.id === id)?.name).filter(Boolean).join(", ") || "—";
-  };
+  const techColorMap = new Map<string, string>();
+  technicians.forEach((t, i) => techColorMap.set(t.id, TECH_COLORS[i % TECH_COLORS.length]));
 
   if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   return (
-    <div>
-      <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="page-title">Interventions</h1>
-          <p className="page-subtitle">{interventions.length} interventions</p>
-        </div>
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Interventions</h1>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditId(null); }}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditId(null); setForm({ client_id: '', machine_ids: [], technician_id: null, date: '', type: 'preventive', description: '', duration: 0, travel_time: 0, notes: '' }); }}>
-              <Plus className="w-4 h-4 mr-1" /> Nouvelle intervention
+            <Button className="rounded-full" onClick={() => { setEditId(null); setForm({ client_id: '', machine_ids: [], technician_id: null, date: '', type: 'installation', description: '', duration: 0, travel_time: 0, notes: '' }); }}>
+              <Plus className="w-4 h-4 mr-1" /> Ajouter
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -110,19 +144,14 @@ export default function Interventions() {
                 </Select>
               </div>
               <div>
-                <Label className="flex items-center gap-1.5 mb-2"><Wrench className="w-3.5 h-3.5" /> Machines ({form.machine_ids.length} sélectionnée{form.machine_ids.length > 1 ? 's' : ''})</Label>
+                <Label className="flex items-center gap-1.5 mb-2"><Wrench className="w-3.5 h-3.5" /> Machines ({form.machine_ids.length})</Label>
                 {clientMachines.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {form.client_id ? "Aucune machine pour ce client" : "Sélectionnez d'abord un client"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{form.client_id ? "Aucune machine pour ce client" : "Sélectionnez d'abord un client"}</p>
                 ) : (
                   <div className="space-y-1.5 max-h-40 overflow-y-auto rounded-xl border border-border/50 p-2">
                     {clientMachines.map(m => (
                       <label key={m.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/30 cursor-pointer text-sm">
-                        <Checkbox
-                          checked={form.machine_ids.includes(m.id)}
-                          onCheckedChange={() => toggleMachine(m.id)}
-                        />
+                        <Checkbox checked={form.machine_ids.includes(m.id)} onCheckedChange={() => toggleMachine(m.id)} />
                         <span>{m.name}</span>
                         {m.model && <span className="text-xs text-muted-foreground">({m.model})</span>}
                       </label>
@@ -137,15 +166,16 @@ export default function Interventions() {
                   <SelectContent>{technicians.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Date *</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
+              <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
               <div>
                 <Label>Type</Label>
                 <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="preventive">Préventive</SelectItem>
-                    <SelectItem value="corrective">Corrective</SelectItem>
-                    <SelectItem value="audit">Audit</SelectItem>
+                    <SelectItem value="installation">Installation</SelectItem>
+                    <SelectItem value="assistance">Assistance</SelectItem>
+                    <SelectItem value="audit">Audit / Visite</SelectItem>
+                    <SelectItem value="atelier">Atelier</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -161,6 +191,7 @@ export default function Interventions() {
                   <Select value={interventions.find(i => i.id === editId)?.status || 'planifiee'} onValueChange={v => changeStatus(editId, v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="a-planifier">A planifier</SelectItem>
                       <SelectItem value="planifiee">Planifiée</SelectItem>
                       <SelectItem value="en-cours">En cours</SelectItem>
                       <SelectItem value="terminee">Terminée</SelectItem>
@@ -176,66 +207,95 @@ export default function Interventions() {
         </Dialog>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous statuts</SelectItem>
-            <SelectItem value="planifiee">Planifiée</SelectItem>
-            <SelectItem value="en-cours">En cours</SelectItem>
-            <SelectItem value="terminee">Terminée</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Sections */}
+      <div className="space-y-4">
+        {SECTIONS.map(section => {
+          const sectionInterventions = filtered.filter(i => getSection(i.type) === section.key);
+          const isOpen = openSections[section.key];
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">Date</th>
-                <th className="text-left px-4 py-3 font-medium">Client</th>
-                <th className="text-left px-4 py-3 font-medium">Machines</th>
-                <th className="text-left px-4 py-3 font-medium">Type</th>
-                <th className="text-left px-4 py-3 font-medium">Technicien</th>
-                <th className="text-left px-4 py-3 font-medium">Statut</th>
-                <th className="text-left px-4 py-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(inter => {
-                const client = clients.find(c => c.id === inter.client_id);
-                const tech = technicians.find(t => t.id === inter.technician_id);
-                return (
-                  <tr key={inter.id} className="border-t hover:bg-muted/30">
-                    <td className="px-4 py-3">{inter.date}</td>
-                    <td className="px-4 py-3 font-medium">{client?.name}</td>
-                    <td className="px-4 py-3 text-xs">{getMachineNames(inter)}</td>
-                    <td className="px-4 py-3"><StatusBadge status={inter.type} /></td>
-                    <td className="px-4 py-3">{tech?.name}</td>
-                    <td className="px-4 py-3"><StatusBadge status={inter.status} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(inter)}>Modifier</Button>
-                        {inter.status === 'planifiee' && (
-                          <Button variant="ghost" size="sm" onClick={() => changeStatus(inter.id, 'en-cours')}>Démarrer</Button>
-                        )}
-                        {inter.status === 'en-cours' && (
-                          <Button variant="ghost" size="sm" onClick={() => changeStatus(inter.id, 'terminee')}>Terminer</Button>
-                        )}
+          return (
+            <Card key={section.key} className="overflow-hidden">
+              {/* Section header as toggle */}
+              <button
+                onClick={() => toggleSection(section.key)}
+                className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+              >
+                <span className="font-semibold text-base">{section.label}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">{sectionInterventions.length}</span>
+                  <Switch checked={isOpen} onCheckedChange={() => toggleSection(section.key)} />
+                </div>
+              </button>
+
+              {/* Section content */}
+              {isOpen && sectionInterventions.length > 0 && (
+                <div className="px-4 pb-4">
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input className="pl-9 rounded-xl" placeholder="Recherche" value={search} onChange={e => setSearch(e.target.value)} />
+                  </div>
+
+                  {STATUS_ORDER.map(status => {
+                    const statusInterventions = sectionInterventions.filter(i => i.status === status.key);
+                    if (statusInterventions.length === 0) return null;
+
+                    return (
+                      <div key={status.key} className="mb-4">
+                        <h3 className="font-bold text-sm mb-2">{status.label}</h3>
+                        <div className="space-y-1">
+                          {statusInterventions.map(inter => {
+                            const client = clients.find(c => c.id === inter.client_id);
+                            const tech = technicians.find(t => t.id === inter.technician_id);
+                            const techColor = inter.technician_id ? techColorMap.get(inter.technician_id) || "bg-muted" : "bg-muted";
+                            const dateStr = inter.date
+                              ? new Date(inter.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                              : "";
+
+                            return (
+                              <div key={inter.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/30 transition-colors group">
+                                <Avatar className="h-10 w-10 shrink-0">
+                                  <AvatarFallback className={`${techColor} text-white text-xs font-medium`}>
+                                    {tech ? getInitials(tech.name) : "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm truncate">
+                                    {client?.name || "—"} {client?.city ? `/ ${client.city}` : ""}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {status.label} {dateStr ? `/ ${dateStr}` : ""}
+                                  </p>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openEdit(inter)}>Modifier</DropdownMenuItem>
+                                    {inter.status === "planifiee" && <DropdownMenuItem onClick={() => changeStatus(inter.id, "en-cours")}>Démarrer</DropdownMenuItem>}
+                                    {inter.status === "en-cours" && <DropdownMenuItem onClick={() => changeStatus(inter.id, "terminee")}>Terminer</DropdownMenuItem>}
+                                    {inter.status !== "a-planifier" && <DropdownMenuItem onClick={() => changeStatus(inter.id, "a-planifier")}>A planifier</DropdownMenuItem>}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                    );
+                  })}
+                </div>
+              )}
+
+              {isOpen && sectionInterventions.length === 0 && (
+                <p className="px-4 pb-4 text-sm text-muted-foreground">Aucune intervention</p>
+              )}
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

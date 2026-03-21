@@ -181,9 +181,9 @@ export default function AuditHistoryPage() {
     drawTextBlock("RECOMMANDATIONS", audit.recommandations || "");
 
     const pageH = doc.internal.pageSize.getHeight();
-    doc.setFillColor(249, 115, 22);
+    doc.setFillColor(0, 204, 204);
     doc.rect(0, pageH - 12, pageW, 12, "F");
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(14, 20, 27);
     doc.setFontSize(8);
     doc.text("TechField — Rapport d'audit généré automatiquement", margin, pageH - 4);
     doc.text(format(new Date(), "dd/MM/yyyy HH:mm"), pageW - margin - 30, pageH - 4);

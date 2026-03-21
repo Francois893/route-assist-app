@@ -94,9 +94,9 @@ export default function AuditHistoryPage() {
     y = 58;
 
     const drawInfoBlock = (title: string, items: [string, string][]) => {
-      doc.setFillColor(30, 35, 45);
+      doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 10 + items.length * lh, 3, 3, "F");
-      doc.setTextColor(249, 115, 22);
+      doc.setTextColor(0, 204, 204);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.text(title, margin + 5, y + 7);

@@ -163,9 +163,9 @@ export default function AuditHistoryPage() {
       if (!text) return;
       if (y > 240) { doc.addPage(); y = 20; }
       const lines = doc.splitTextToSize(text, contentW - 10);
-      doc.setFillColor(30, 35, 45);
+      doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 12 + lines.length * 5, 3, 3, "F");
-      doc.setTextColor(249, 115, 22);
+      doc.setTextColor(0, 204, 204);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.text(title, margin + 5, y + 7);

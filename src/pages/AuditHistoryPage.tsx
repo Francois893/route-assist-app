@@ -130,9 +130,9 @@ export default function AuditHistoryPage() {
 
     const checklist = (audit.checklist as any[]) || [];
     if (checklist.length > 0) {
-      doc.setFillColor(30, 35, 45);
+      doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 10 + checklist.length * (lh + 3), 3, 3, "F");
-      doc.setTextColor(249, 115, 22);
+      doc.setTextColor(0, 204, 204);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.text("CHECKLIST DE VÉRIFICATION", margin + 5, y + 7);

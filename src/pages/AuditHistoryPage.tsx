@@ -75,12 +75,12 @@ export default function AuditHistoryPage() {
     const margin = 20;
     const contentW = pageW - margin * 2;
 
-    doc.setFillColor(20, 24, 31);
+    doc.setFillColor(14, 20, 27);
     doc.rect(0, 0, pageW, 45, "F");
-    doc.setFillColor(249, 115, 22);
+    doc.setFillColor(0, 204, 204);
     doc.rect(0, 45, pageW, 2, "F");
 
-    doc.setTextColor(249, 115, 22);
+    doc.setTextColor(0, 204, 204);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text("RAPPORT D'AUDIT", margin, 25);

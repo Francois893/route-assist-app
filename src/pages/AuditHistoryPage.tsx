@@ -75,12 +75,12 @@ export default function AuditHistoryPage() {
     const margin = 20;
     const contentW = pageW - margin * 2;
 
-    doc.setFillColor(20, 24, 31);
+    doc.setFillColor(14, 20, 27);
     doc.rect(0, 0, pageW, 45, "F");
-    doc.setFillColor(249, 115, 22);
+    doc.setFillColor(0, 204, 204);
     doc.rect(0, 45, pageW, 2, "F");
 
-    doc.setTextColor(249, 115, 22);
+    doc.setTextColor(0, 204, 204);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text("RAPPORT D'AUDIT", margin, 25);
@@ -94,9 +94,9 @@ export default function AuditHistoryPage() {
     y = 58;
 
     const drawInfoBlock = (title: string, items: [string, string][]) => {
-      doc.setFillColor(30, 35, 45);
+      doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 10 + items.length * lh, 3, 3, "F");
-      doc.setTextColor(249, 115, 22);
+      doc.setTextColor(0, 204, 204);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.text(title, margin + 5, y + 7);
@@ -130,9 +130,9 @@ export default function AuditHistoryPage() {
 
     const checklist = (audit.checklist as any[]) || [];
     if (checklist.length > 0) {
-      doc.setFillColor(30, 35, 45);
+      doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 10 + checklist.length * (lh + 3), 3, 3, "F");
-      doc.setTextColor(249, 115, 22);
+      doc.setTextColor(0, 204, 204);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.text("CHECKLIST DE VÉRIFICATION", margin + 5, y + 7);
@@ -163,9 +163,9 @@ export default function AuditHistoryPage() {
       if (!text) return;
       if (y > 240) { doc.addPage(); y = 20; }
       const lines = doc.splitTextToSize(text, contentW - 10);
-      doc.setFillColor(30, 35, 45);
+      doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 12 + lines.length * 5, 3, 3, "F");
-      doc.setTextColor(249, 115, 22);
+      doc.setTextColor(0, 204, 204);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.text(title, margin + 5, y + 7);
@@ -181,9 +181,9 @@ export default function AuditHistoryPage() {
     drawTextBlock("RECOMMANDATIONS", audit.recommandations || "");
 
     const pageH = doc.internal.pageSize.getHeight();
-    doc.setFillColor(249, 115, 22);
+    doc.setFillColor(0, 204, 204);
     doc.rect(0, pageH - 12, pageW, 12, "F");
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(14, 20, 27);
     doc.setFontSize(8);
     doc.text("TechField — Rapport d'audit généré automatiquement", margin, pageH - 4);
     doc.text(format(new Date(), "dd/MM/yyyy HH:mm"), pageW - margin - 30, pageH - 4);

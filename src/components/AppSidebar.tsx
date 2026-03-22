@@ -9,6 +9,8 @@ import {
   BarChart3,
   Cpu,
   CalendarDays,
+  Package,
+  ShoppingCart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -33,6 +35,8 @@ const items = [
   { title: "Historique audits", url: "/audits", icon: History },
   { title: "Tournées", url: "/tournees", icon: MapPin },
   { title: "Devis", url: "/devis", icon: FileText },
+  { title: "Matériel", url: "/materiel", icon: Package },
+  { title: "Offres", url: "/offres", icon: ShoppingCart },
   { title: "Techniciens", url: "/techniciens", icon: BarChart3 },
 ];
 

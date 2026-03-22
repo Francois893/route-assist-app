@@ -15,6 +15,8 @@ import DevisPage from "@/pages/DevisPage";
 import TechniciansPage from "@/pages/TechniciansPage";
 import MachinesPage from "@/pages/MachinesPage";
 import PlanningPage from "@/pages/PlanningPage";
+import EquipmentPage from "@/pages/EquipmentPage";
+import OffresPage from "@/pages/OffresPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();

@@ -10,6 +10,10 @@ import {
   ShoppingCart,
   Search,
   Users,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +41,16 @@ interface ServiceItem {
   discount: number;
 }
 
+interface MaintenanceItem {
+  id: string;
+  nbBacs: number;
+  distance: number;
+  forfait: "A" | "B" | "C";
+  prixForfait: number;
+  totalPrice: number;
+  description: string;
+}
+
 interface ClientInfo {
   id: string;
   name: string;
@@ -47,11 +61,25 @@ interface ClientInfo {
   email: string | null;
 }
 
+function getForfait(distance: number): { label: "A" | "B" | "C"; price: number } {
+  if (distance < 50) return { label: "A", price: 400 };
+  if (distance <= 200) return { label: "B", price: 600 };
+  return { label: "C", price: 821 };
+}
+
+function calcMaintenancePrice(nbBacs: number, forfaitPrice: number): number {
+  if (nbBacs <= 0) return 0;
+  const first = forfaitPrice;
+  const others = Math.max(0, nbBacs - 1) * forfaitPrice * 0.6;
+  return first + others;
+}
+
 export default function OffresPage() {
   const [clients, setClients] = useState<ClientInfo[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
   const [refSearch, setRefSearch] = useState("");
   const [serviceDesc, setServiceDesc] = useState("");
   const [servicePrice, setServicePrice] = useState("");
@@ -61,15 +89,18 @@ export default function OffresPage() {
   const [delaiLivraison, setDelaiLivraison] = useState("");
   const [conditionsPaiement, setConditionsPaiement] = useState("VIREMENT 60 J");
   const [validiteOffre, setValiditeOffre] = useState("");
+  const [clientInfoOpen, setClientInfoOpen] = useState(true);
+
+  // Maintenance form
+  const [maintNbBacs, setMaintNbBacs] = useState<number>(1);
+  const [maintDistance, setMaintDistance] = useState<number>(0);
 
   useEffect(() => {
     supabase.from("clients").select("id, name, address, city, contact, phone, email").then(({ data }) => {
       if (data) setClients(data);
     });
-    // Generate offer number
     const now = new Date();
     setOffreNumero(`EO${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`);
-    // Default validity 3 months
     const validity = new Date(now);
     validity.setMonth(validity.getMonth() + 3);
     setValiditeOffre(validity.toLocaleDateString("fr-FR"));
@@ -100,9 +131,7 @@ export default function OffresPage() {
     setCart((prev) =>
       prev
         .map((c) =>
-          c.equipment.id === id
-            ? { ...c, quantity: Math.max(0, c.quantity + delta) }
-            : c
+          c.equipment.id === id ? { ...c, quantity: Math.max(0, c.quantity + delta) } : c
         )
         .filter((c) => c.quantity > 0)
     );
@@ -124,16 +153,35 @@ export default function OffresPage() {
     if (!serviceDesc || !servicePrice) return;
     setServices((prev) => [
       ...prev,
-      {
-        id: crypto.randomUUID(),
-        description: serviceDesc,
-        price: parseFloat(servicePrice),
-        discount: 0,
-      },
+      { id: crypto.randomUUID(), description: serviceDesc, price: parseFloat(servicePrice), discount: 0 },
     ]);
     setServiceDesc("");
     setServicePrice("");
     toast.success("Prestation ajoutée");
+  };
+
+  const addMaintenance = () => {
+    if (maintNbBacs <= 0 || maintDistance < 0) return;
+    const forfait = getForfait(maintDistance);
+    const totalPrice = calcMaintenancePrice(maintNbBacs, forfait.price);
+    const desc = `Maintenance forfait ${forfait.label} — ${maintNbBacs} bac${maintNbBacs > 1 ? "s" : ""} — ${maintDistance} km`;
+    setMaintenanceItems((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        nbBacs: maintNbBacs,
+        distance: maintDistance,
+        forfait: forfait.label,
+        prixForfait: forfait.price,
+        totalPrice,
+        description: desc,
+      },
+    ]);
+    toast.success("Forfait maintenance ajouté");
+  };
+
+  const removeMaintenanceItem = (id: string) => {
+    setMaintenanceItems((prev) => prev.filter((m) => m.id !== id));
   };
 
   const updateServiceDiscount = (id: string, discount: number) => {
@@ -146,19 +194,20 @@ export default function OffresPage() {
     setServices((prev) => prev.filter((s) => s.id !== id));
   };
 
-  const totalItems = cart.length + services.length;
+  const totalItems = cart.length + services.length + maintenanceItems.length;
 
-  const cartTotal = cart.reduce((sum, c) => {
-    return sum + c.equipment.price * c.quantity * (1 - c.discount / 100);
-  }, 0);
+  const cartTotal = cart.reduce((sum, c) => sum + c.equipment.price * c.quantity * (1 - c.discount / 100), 0);
+  const servicesTotal = services.reduce((sum, s) => sum + s.price * (1 - s.discount / 100), 0);
+  const maintenanceTotal = maintenanceItems.reduce((sum, m) => sum + m.totalPrice, 0);
+  const grandTotal = cartTotal + servicesTotal + maintenanceTotal;
 
-  const servicesTotal = services.reduce((sum, s) => {
-    return sum + s.price * (1 - s.discount / 100);
-  }, 0);
+  const fmtPrice = (n: number) => {
+    return new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  };
 
-  const grandTotal = cartTotal + servicesTotal;
-
-  const fmtNum = (n: number) => n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtCurrency = (n: number) => {
+    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
+  };
 
   const exportPDF = () => {
     if (!selectedClient) {
@@ -172,24 +221,30 @@ export default function OffresPage() {
     const margin = 14;
     const rightCol = 120;
 
-    // ── HEADER: Company info (left) + Client info (right) ──
-    doc.setFontSize(16);
+    // Colors — light theme with blue accent
+    const blue = { r: 30, g: 80, b: 160 };
+    const darkBlue = { r: 20, g: 50, b: 110 };
+    const lightBg = { r: 240, g: 244, b: 250 };
+    const white = { r: 255, g: 255, b: 255 };
+
+    // ── HEADER ──
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 160, 120);
+    doc.setTextColor(blue.r, blue.g, blue.b);
     doc.text("TECHFIELD", margin, 18);
     doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
+    doc.setTextColor(100, 100, 110);
     doc.setFont("helvetica", "normal");
     doc.text("Your technical solutions partner", margin, 23);
 
-    doc.setDrawColor(0, 160, 120);
-    doc.setLineWidth(0.5);
+    doc.setDrawColor(blue.r, blue.g, blue.b);
+    doc.setLineWidth(0.6);
     doc.line(margin, 27, w - margin, 27);
 
     // Company details
     let y = 35;
     doc.setFontSize(8);
-    doc.setTextColor(40, 40, 40);
+    doc.setTextColor(50, 50, 60);
     doc.setFont("helvetica", "bold");
     doc.text("TechField Solutions S.A.S.", margin, y);
     doc.setFont("helvetica", "normal");
@@ -198,14 +253,14 @@ export default function OffresPage() {
     doc.text("www.techfield.fr", margin, y + 12);
 
     // Client box
-    doc.setFillColor(245, 245, 245);
+    doc.setFillColor(lightBg.r, lightBg.g, lightBg.b);
     doc.roundedRect(rightCol, y - 5, w - rightCol - margin, 28, 2, 2, "F");
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(30, 30, 30);
+    doc.setTextColor(30, 30, 40);
     doc.text(selectedClient.name, rightCol + 4, y + 1);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.setTextColor(60, 60, 60);
+    doc.setTextColor(70, 70, 80);
     if (selectedClient.contact) doc.text(selectedClient.contact, rightCol + 4, y + 6);
     if (selectedClient.address) doc.text(selectedClient.address, rightCol + 4, y + 11);
     doc.text(selectedClient.city, rightCol + 4, y + 16);
@@ -214,7 +269,7 @@ export default function OffresPage() {
     // ── OFFER INFO ──
     y = 70;
     doc.setFontSize(8);
-    doc.setTextColor(40, 40, 40);
+    doc.setTextColor(50, 50, 60);
     doc.setFont("helvetica", "normal");
     doc.text("OFFRE N°:", margin, y);
     doc.setFont("helvetica", "bold");
@@ -222,78 +277,72 @@ export default function OffresPage() {
     doc.setFont("helvetica", "normal");
     doc.text("Date:", margin, y + 5);
     doc.text(new Date().toLocaleDateString("fr-FR"), margin + 25, y + 5);
-    if (commandeRef) {
-      doc.text("V/COMMANDE N°:", margin, y + 10);
-      doc.text(commandeRef, margin + 35, y + 10);
-    }
-    if (transporteur) {
-      doc.text("TRANSPORTEUR:", margin, y + 15);
-      doc.text(transporteur, margin + 35, y + 15);
-    }
+    if (commandeRef) { doc.text("V/COMMANDE N°:", margin, y + 10); doc.text(commandeRef, margin + 35, y + 10); }
+    if (transporteur) { doc.text("TRANSPORTEUR:", margin, y + 15); doc.text(transporteur, margin + 35, y + 15); }
 
-    // "Offre" title on the right
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 160, 120);
+    doc.setTextColor(blue.r, blue.g, blue.b);
     doc.text("Offre", w - margin, y + 5, { align: "right" });
 
     // ── TABLE ──
     y = 98;
     const colRef = margin;
     const colDesig = margin + 28;
-    const colQte = 128;
-    const colPU = 145;
+    const colQte = 118;
+    const colPU = 135;
+    const colRemise = 158;
     const colMontant = w - margin;
 
     // Table header
-    doc.setFillColor(0, 160, 120);
+    doc.setFillColor(blue.r, blue.g, blue.b);
     doc.rect(margin, y, w - 2 * margin, 8, "F");
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(white.r, white.g, white.b);
     doc.text("Réf.", colRef + 2, y + 5.5);
     doc.text("Désignation", colDesig, y + 5.5);
-    doc.text("Qté.", colQte, y + 5.5);
-    doc.text("Prix Uni. HT", colPU, y + 5.5);
+    doc.text("Qté", colQte, y + 5.5);
+    doc.text("P.U. HT", colPU, y + 5.5);
+    doc.text("Remise", colRemise, y + 5.5);
     doc.text("Montant HT", colMontant - 2, y + 5.5, { align: "right" });
     y += 10;
 
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(30, 30, 30);
+    doc.setTextColor(30, 30, 40);
 
-    const drawLine = (ref: string, desig: string, qty: string, pu: string, total: string, bold = false) => {
-      if (y > h - 45) {
-        doc.addPage();
-        y = 20;
+    let rowIndex = 0;
+
+    const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string) => {
+      if (y > h - 45) { doc.addPage(); y = 20; }
+      if (rowIndex % 2 === 0) {
+        doc.setFillColor(lightBg.r, lightBg.g, lightBg.b);
+        doc.rect(margin, y - 1, w - 2 * margin, 7, "F");
       }
-      // alternating bg
-      doc.setFillColor(250, 250, 250);
-      doc.rect(margin, y - 1, w - 2 * margin, 7, "F");
-      // border lines
-      doc.setDrawColor(220, 220, 220);
+      doc.setDrawColor(210, 215, 225);
       doc.line(margin, y + 6, w - margin, y + 6);
-
       doc.setFontSize(7.5);
-      doc.setFont("helvetica", bold ? "bold" : "normal");
-      doc.setTextColor(30, 30, 30);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 30, 40);
       doc.text(ref, colRef + 2, y + 4);
-      const truncDesig = desig.length > 50 ? desig.substring(0, 50) + "..." : desig;
+      const truncDesig = desig.length > 40 ? desig.substring(0, 40) + "..." : desig;
       doc.text(truncDesig, colDesig, y + 4);
       if (qty) doc.text(qty, colQte + 4, y + 4, { align: "center" });
-      if (pu) doc.text(pu, colPU + 15, y + 4, { align: "right" });
+      if (pu) doc.text(pu, colPU + 16, y + 4, { align: "right" });
+      doc.text(remise, colRemise + 10, y + 4, { align: "center" });
       doc.text(total, colMontant - 2, y + 4, { align: "right" });
       y += 8;
+      rowIndex++;
     };
 
-    // Separator row for sections
     const drawSectionSep = (title: string) => {
       if (y > h - 45) { doc.addPage(); y = 20; }
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 160, 120);
+      doc.setTextColor(blue.r, blue.g, blue.b);
       doc.text(title, colDesig, y + 4);
       y += 7;
-      doc.setDrawColor(0, 160, 120);
+      doc.setDrawColor(blue.r, blue.g, blue.b);
       doc.setLineWidth(0.3);
       doc.line(margin, y - 1, w - margin, y - 1);
       y += 2;
@@ -301,97 +350,87 @@ export default function OffresPage() {
 
     // Material items
     if (cart.length > 0) {
-      drawSectionSep("*MATÉRIEL*");
+      drawSectionSep("MATÉRIEL");
       cart.forEach((item) => {
         const lineTotal = item.equipment.price * item.quantity * (1 - item.discount / 100);
-        const puDisplay = fmtNum(item.equipment.price);
-        const totalDisplay = fmtNum(lineTotal);
-        const ref = item.equipment.reference.replace("MEL-", "");
-        drawLine(ref, item.equipment.designation, String(item.quantity), puDisplay, totalDisplay);
+        const remiseStr = item.discount > 0 ? `${item.discount}%` : "-";
+        drawRow(
+          item.equipment.reference.replace("MEL-", ""),
+          item.equipment.designation,
+          String(item.quantity),
+          fmtPrice(item.equipment.price),
+          remiseStr,
+          fmtPrice(lineTotal)
+        );
+      });
+    }
+
+    // Maintenance items
+    if (maintenanceItems.length > 0) {
+      drawSectionSep("MAINTENANCE");
+      maintenanceItems.forEach((m) => {
+        drawRow("", m.description, "1", fmtPrice(m.totalPrice), "-", fmtPrice(m.totalPrice));
       });
     }
 
     // Services
     if (services.length > 0) {
-      drawSectionSep("*PRESTATIONS*");
+      drawSectionSep("PRESTATIONS");
       services.forEach((s) => {
         const lineTotal = s.price * (1 - s.discount / 100);
-        drawLine("", s.description, "1", fmtNum(s.price), fmtNum(lineTotal));
+        const remiseStr = s.discount > 0 ? `${s.discount}%` : "-";
+        drawRow("", s.description, "1", fmtPrice(s.price), remiseStr, fmtPrice(lineTotal));
       });
     }
 
     // ── TOTALS ──
     y += 4;
-    // Bottom border
-    doc.setDrawColor(0, 160, 120);
+    doc.setDrawColor(blue.r, blue.g, blue.b);
     doc.setLineWidth(0.5);
     doc.line(margin, y, w - margin, y);
-    y += 6;
-
-    // Montant HT & DTO row
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin, y, 60, 14, "F");
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 160, 120);
-    doc.text("Montant HT", margin + 4, y + 6);
-    doc.setTextColor(30, 30, 30);
-    doc.text(fmtNum(grandTotal), margin + 4, y + 11);
-
-    // DTO P.P. column
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin + 62, y, 30, 14, "F");
-    doc.setTextColor(0, 160, 120);
-    doc.text("DTO. P.P.", margin + 66, y + 6);
+    y += 8;
 
     // Total net HT
-    doc.setFillColor(0, 160, 120);
-    doc.rect(colPU - 10, y, w - margin - colPU + 10, 14, "F");
-    doc.setTextColor(255, 255, 255);
+    doc.setFillColor(blue.r, blue.g, blue.b);
+    doc.roundedRect(colPU - 20, y - 2, w - margin - colPU + 22, 16, 2, 2, "F");
+    doc.setTextColor(white.r, white.g, white.b);
     doc.setFontSize(9);
-    doc.text("Total net H.T.", colPU, y + 6);
-    doc.setFontSize(10);
-    doc.text(fmtNum(grandTotal), colMontant - 2, y + 11, { align: "right" });
+    doc.setFont("helvetica", "bold");
+    doc.text("Total net H.T.", colPU - 14, y + 5);
+    doc.setFontSize(11);
+    doc.text(`${fmtPrice(grandTotal)} €`, colMontant - 2, y + 10, { align: "right" });
 
-    y += 22;
+    y += 24;
 
     // ── CONDITIONS ──
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(60, 60, 60);
-    doc.text("Devise", margin, y);
-    doc.text("Euros", margin + 40, y);
-    doc.text("Conditions de règlement", margin, y + 5);
-    doc.text(conditionsPaiement, margin + 40, y + 5);
-    if (delaiLivraison) {
-      doc.text("Délai de livraison", margin, y + 10);
-      doc.text(delaiLivraison, margin + 40, y + 10);
-    }
-    doc.text(`Offre valable pour les envois jusqu'au`, margin, y + 15);
-    doc.text(validiteOffre, margin + 55, y + 15);
-
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(70, 70, 80);
+    doc.text("Devise", margin, y); doc.text("Euros", margin + 40, y);
+    doc.text("Conditions de règlement", margin, y + 5); doc.text(conditionsPaiement, margin + 40, y + 5);
+    if (delaiLivraison) { doc.text("Délai de livraison", margin, y + 10); doc.text(delaiLivraison, margin + 40, y + 10); }
+    doc.text("Offre valable pour les envois jusqu'au", margin, y + 15); doc.text(validiteOffre, margin + 55, y + 15);
+    doc.setTextColor(110, 110, 120);
     doc.text("Prix exonérés de TVA", w - margin, y + 15, { align: "right" });
 
     // ── FOOTER ──
     doc.setFontSize(6);
-    doc.setTextColor(130, 130, 130);
+    doc.setTextColor(140, 140, 150);
     doc.text("TechField Solutions — Document généré automatiquement", w / 2, h - 8, { align: "center" });
 
     doc.save(`offre_${offreNumero}.pdf`);
     toast.success("PDF téléchargé");
   };
 
+  const maintForfait = getForfait(maintDistance);
+  const maintPreview = calcMaintenancePrice(maintNbBacs, maintForfait.price);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-wide uppercase text-foreground">
-            Offres
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Créer une offre commerciale
-          </p>
+          <h1 className="text-2xl font-bold tracking-wide uppercase text-foreground">Offres</h1>
+          <p className="text-sm text-muted-foreground mt-1">Créer une offre commerciale</p>
         </div>
         {totalItems > 0 && selectedClient && (
           <Button onClick={exportPDF} className="gap-2">
@@ -404,10 +443,23 @@ export default function OffresPage() {
       {/* Step 1: Client Selection */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            1. Sélectionner le client
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              1. Sélectionner le client
+            </CardTitle>
+            {selectedClient && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setClientInfoOpen(!clientInfoOpen)}
+                className="gap-1 text-xs text-muted-foreground"
+              >
+                {clientInfoOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {clientInfoOpen ? "Réduire" : "Détails"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <Select value={selectedClientId} onValueChange={setSelectedClientId}>
@@ -416,48 +468,45 @@ export default function OffresPage() {
             </SelectTrigger>
             <SelectContent>
               {clients.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name} — {c.city}
-                </SelectItem>
+                <SelectItem key={c.id} value={c.id}>{c.name} — {c.city}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {selectedClient && (
-            <div className="p-3 rounded-xl bg-secondary/50 text-sm space-y-1">
-              <p className="font-semibold text-foreground">{selectedClient.name}</p>
-              {selectedClient.contact && <p className="text-muted-foreground">{selectedClient.contact}</p>}
-              {selectedClient.address && <p className="text-muted-foreground">{selectedClient.address}</p>}
-              <p className="text-muted-foreground">{selectedClient.city}</p>
-            </div>
-          )}
-          {/* Offer details */}
-          {selectedClient && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
-              <div>
-                <Label className="text-xs">N° Offre</Label>
-                <Input value={offreNumero} onChange={(e) => setOffreNumero(e.target.value)} />
+          {selectedClient && clientInfoOpen && (
+            <>
+              <div className="p-3 rounded-xl bg-secondary/50 text-sm space-y-1">
+                <p className="font-semibold text-foreground">{selectedClient.name}</p>
+                {selectedClient.contact && <p className="text-muted-foreground">{selectedClient.contact}</p>}
+                {selectedClient.address && <p className="text-muted-foreground">{selectedClient.address}</p>}
+                <p className="text-muted-foreground">{selectedClient.city}</p>
               </div>
-              <div>
-                <Label className="text-xs">Conditions paiement</Label>
-                <Input value={conditionsPaiement} onChange={(e) => setConditionsPaiement(e.target.value)} />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+                <div>
+                  <Label className="text-xs">N° Offre</Label>
+                  <Input value={offreNumero} onChange={(e) => setOffreNumero(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Conditions paiement</Label>
+                  <Input value={conditionsPaiement} onChange={(e) => setConditionsPaiement(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Transporteur</Label>
+                  <Input value={transporteur} onChange={(e) => setTransporteur(e.target.value)} placeholder="FED EX..." />
+                </div>
+                <div>
+                  <Label className="text-xs">Réf. commande client</Label>
+                  <Input value={commandeRef} onChange={(e) => setCommandeRef(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Délai de livraison</Label>
+                  <Input value={delaiLivraison} onChange={(e) => setDelaiLivraison(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Validité offre</Label>
+                  <Input value={validiteOffre} onChange={(e) => setValiditeOffre(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Transporteur</Label>
-                <Input value={transporteur} onChange={(e) => setTransporteur(e.target.value)} placeholder="FED EX..." />
-              </div>
-              <div>
-                <Label className="text-xs">Réf. commande client</Label>
-                <Input value={commandeRef} onChange={(e) => setCommandeRef(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Délai de livraison</Label>
-                <Input value={delaiLivraison} onChange={(e) => setDelaiLivraison(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Validité offre</Label>
-                <Input value={validiteOffre} onChange={(e) => setValiditeOffre(e.target.value)} />
-              </div>
-            </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -475,18 +524,9 @@ export default function OffresPage() {
             <CardContent>
               <Tabs defaultValue="materiel" className="space-y-4">
                 <TabsList className="bg-secondary">
-                  <TabsTrigger value="materiel" className="gap-2">
-                    <Package className="h-4 w-4" />
-                    Matériel
-                  </TabsTrigger>
-                  <TabsTrigger value="maintenance" className="gap-2">
-                    <Settings className="h-4 w-4" />
-                    Maintenance
-                  </TabsTrigger>
-                  <TabsTrigger value="intervention" className="gap-2">
-                    <Wrench className="h-4 w-4" />
-                    Intervention
-                  </TabsTrigger>
+                  <TabsTrigger value="materiel" className="gap-2"><Package className="h-4 w-4" />Matériel</TabsTrigger>
+                  <TabsTrigger value="maintenance" className="gap-2"><Settings className="h-4 w-4" />Maintenance</TabsTrigger>
+                  <TabsTrigger value="intervention" className="gap-2"><Wrench className="h-4 w-4" />Intervention</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="materiel" className="space-y-4">
@@ -508,17 +548,11 @@ export default function OffresPage() {
                           onClick={() => addToCart(eq)}
                         >
                           <div className="min-w-0">
-                            <span className="font-mono text-sm text-primary font-semibold">
-                              {eq.reference}
-                            </span>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {eq.designation}
-                            </p>
+                            <span className="font-mono text-sm text-primary font-semibold">{eq.reference}</span>
+                            <p className="text-xs text-muted-foreground truncate">{eq.designation}</p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-sm font-semibold">
-                              {eq.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
-                            </span>
+                            <span className="text-sm font-semibold">{fmtCurrency(eq.price)}</span>
                             <Plus className="h-4 w-4 text-primary" />
                           </div>
                         </Card>
@@ -527,40 +561,68 @@ export default function OffresPage() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="maintenance" className="space-y-3">
+                <TabsContent value="maintenance" className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Ajoutez une prestation de maintenance à l'offre
+                    Calculez le forfait maintenance selon la distance et le nombre de bacs
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="md:col-span-2">
-                      <Label className="text-xs">Description</Label>
-                      <Textarea
-                        value={serviceDesc}
-                        onChange={(e) => setServiceDesc(e.target.value)}
-                        placeholder="Contrat de maintenance annuel..."
-                        rows={2}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Montant HT (€)</Label>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs flex items-center gap-1">
+                        <Truck className="h-3 w-3" /> Nombre de bacs
+                      </Label>
                       <Input
                         type="number"
-                        value={servicePrice}
-                        onChange={(e) => setServicePrice(e.target.value)}
-                        placeholder="0.00"
+                        min={1}
+                        value={maintNbBacs}
+                        onChange={(e) => setMaintNbBacs(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs flex items-center gap-1">
+                        <MapPin className="h-3 w-3" /> Distance bureau / client (km)
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={maintDistance}
+                        onChange={(e) => setMaintDistance(Math.max(0, parseInt(e.target.value) || 0))}
                       />
                     </div>
                   </div>
-                  <Button onClick={addService} size="sm" className="gap-2">
+
+                  {/* Forfait preview */}
+                  <div className="p-4 rounded-xl bg-secondary/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Forfait applicable</span>
+                      <Badge variant="outline" className="font-mono">
+                        Forfait {maintForfait.label} — {fmtCurrency(maintForfait.price)}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>{"< 50 km → Forfait A : 400 €"}</p>
+                      <p>{"50 - 200 km → Forfait B : 600 €"}</p>
+                      <p>{"> 200 km → Forfait C : 821 €"}</p>
+                    </div>
+                    {maintNbBacs > 1 && (
+                      <p className="text-xs text-muted-foreground">
+                        1er bac : {fmtCurrency(maintForfait.price)} — bacs suivants : {fmtCurrency(maintForfait.price * 0.6)} chacun (-40%)
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <span className="text-sm font-semibold">Total maintenance</span>
+                      <span className="text-lg font-bold text-primary">{fmtCurrency(maintPreview)}</span>
+                    </div>
+                  </div>
+
+                  <Button onClick={addMaintenance} size="sm" className="gap-2">
                     <Plus className="h-3 w-3" />
-                    Ajouter
+                    Ajouter au panier
                   </Button>
                 </TabsContent>
 
                 <TabsContent value="intervention" className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Ajoutez une prestation d'intervention à l'offre
-                  </p>
+                  <p className="text-sm text-muted-foreground">Ajoutez une prestation d'intervention à l'offre</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="md:col-span-2">
                       <Label className="text-xs">Description</Label>
@@ -601,17 +663,10 @@ export default function OffresPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {cart.map((item) => (
-                  <div
-                    key={item.equipment.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50"
-                  >
+                  <div key={item.equipment.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
                     <div className="flex-1 min-w-0">
-                      <span className="font-mono text-sm text-primary font-semibold">
-                        {item.equipment.reference}
-                      </span>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {item.equipment.designation}
-                      </p>
+                      <span className="font-mono text-sm text-primary font-semibold">{item.equipment.reference}</span>
+                      <p className="text-xs text-muted-foreground truncate">{item.equipment.designation}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-end">
                       <div className="flex items-center gap-1">
@@ -630,10 +685,28 @@ export default function OffresPage() {
                         placeholder="Remise %"
                         className="w-20 h-7 text-xs"
                       />
+                      {item.discount > 0 && (
+                        <Badge variant="outline" className="text-xs text-warning">-{item.discount}%</Badge>
+                      )}
                       <span className="text-sm font-semibold w-24 text-right">
-                        {(item.equipment.price * item.quantity * (1 - item.discount / 100)).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+                        {fmtCurrency(item.equipment.price * item.quantity * (1 - item.discount / 100))}
                       </span>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeFromCart(item.equipment.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {maintenanceItems.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
+                    <div className="flex-1 min-w-0">
+                      <Badge variant="outline" className="text-xs mb-1">Maintenance</Badge>
+                      <p className="text-sm text-foreground truncate">{m.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold w-24 text-right">{fmtCurrency(m.totalPrice)}</span>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeMaintenanceItem(m.id)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -654,8 +727,11 @@ export default function OffresPage() {
                         placeholder="Remise %"
                         className="w-20 h-7 text-xs"
                       />
+                      {s.discount > 0 && (
+                        <Badge variant="outline" className="text-xs text-warning">-{s.discount}%</Badge>
+                      )}
                       <span className="text-sm font-semibold w-24 text-right">
-                        {(s.price * (1 - s.discount / 100)).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+                        {fmtCurrency(s.price * (1 - s.discount / 100))}
                       </span>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeService(s.id)}>
                         <Trash2 className="h-3 w-3" />
@@ -665,12 +741,8 @@ export default function OffresPage() {
                 ))}
 
                 <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    Total HT
-                  </span>
-                  <span className="text-xl font-bold text-primary">
-                    {grandTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
-                  </span>
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Total HT</span>
+                  <span className="text-xl font-bold text-primary">{fmtCurrency(grandTotal)}</span>
                 </div>
 
                 <Button onClick={exportPDF} className="w-full gap-2 mt-2">

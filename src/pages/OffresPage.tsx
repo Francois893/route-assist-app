@@ -430,12 +430,12 @@ export default function OffresPage() {
 
         g.machines.forEach((machine) => {
           const desc = `Maintenance préventive ${machine.type} — Forfait ${g.forfait}`;
-          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit));
+          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true);
 
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];
           parts.forEach((part) => {
-            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), fmtPrice(part.price), "-", fmtPrice(part.price * part.quantity));
+            drawRow(part.reference, part.designation, String(part.quantity), fmtPrice(part.price), "-", fmtPrice(part.price * part.quantity));
           });
         });
       });

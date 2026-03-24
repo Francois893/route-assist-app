@@ -98,7 +98,7 @@ export default function OffresPage() {
   const [maintNbBacsStr, setMaintNbBacsStr] = useState<string>("1");
   const [maintDistanceStr, setMaintDistanceStr] = useState<string>("0");
 
-  const maintNbBacs = parseInt(maintNbBacsStr) || 0;
+  const maintNbMachines = parseInt(maintNbBacsStr) || 0;
   const maintDistance = parseInt(maintDistanceStr) || 0;
 
   useEffect(() => {

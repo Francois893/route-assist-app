@@ -41,17 +41,28 @@ interface ServiceItem {
   discount: number;
 }
 
-interface MaintenanceItem {
+const MACHINE_TYPES = [
+  "B4 Piston",
+  "B4 Gear",
+  "B4 NS",
+  "Micron Piston",
+  "Micron Gear",
+  "Macro",
+] as const;
+type MachineType = typeof MACHINE_TYPES[number];
+
+interface MaintenanceMachine {
   id: string;
-  nbMachines: number;
+  type: MachineType;
+}
+
+interface MaintenanceGroup {
+  id: string;
+  machines: MaintenanceMachine[];
   distance: number;
   forfait: "A" | "B" | "C";
   prixBase: number;
-  prixUnitaire: number;
-  remisePct: number;
-  totalPrice: number;
   discount: number;
-  description: string;
 }
 
 interface ClientInfo {

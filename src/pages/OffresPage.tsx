@@ -425,7 +425,7 @@ export default function OffresPage() {
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];
           parts.forEach((part) => {
-            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), "inclus", "-", "inclus");
+            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), fmtPrice(part.price), "-", fmtPrice(part.price * part.quantity));
           });
         });
       });

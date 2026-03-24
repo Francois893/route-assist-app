@@ -27,6 +27,7 @@ const menuItems = [
   { title: "Devis", description: "Suivi des devis et offres", url: "/devis", icon: FileText },
   { title: "Matériel", description: "Catalogue de références", url: "/materiel", icon: Package },
   { title: "Offres", description: "Créer une offre commerciale", url: "/offres", icon: ShoppingCart },
+  { title: "Inventaire", description: "Gestion des stocks", url: "/inventaire", icon: ClipboardList },
   { title: "Techniciens", description: "Performance et coûts", url: "/techniciens", icon: BarChart3 },
 ];
 

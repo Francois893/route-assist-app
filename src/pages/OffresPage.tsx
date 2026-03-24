@@ -318,12 +318,8 @@ export default function OffresPage() {
     doc.setFontSize(8);
     doc.setTextColor(50, 50, 60);
     doc.setFont("helvetica", "normal");
-    doc.text("OFFRE N°:", margin, y);
-    doc.setFont("helvetica", "bold");
-    doc.text(offreNumero, margin + 25, y);
-    doc.setFont("helvetica", "normal");
-    doc.text("Date:", margin, y + 5);
-    doc.text(new Date().toLocaleDateString("fr-FR"), margin + 25, y + 5);
+    doc.text("Date:", margin, y);
+    doc.text(new Date().toLocaleDateString("fr-FR"), margin + 25, y);
 
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");

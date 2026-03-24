@@ -104,9 +104,6 @@ export default function OffresPage() {
     });
     const now = new Date();
     setOffreNumero(`EO${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`);
-    const validity = new Date(now);
-    validity.setMonth(validity.getMonth() + 3);
-    setValiditeOffre(validity.toLocaleDateString("fr-FR"));
   }, []);
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);

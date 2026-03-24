@@ -105,7 +105,9 @@ export default function ClientDetail() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {machines.map(machine => {
-          const machineInterventions = interventions.filter(i => i.machine_id === machine.id);
+          const machineInterventions = interventions.filter(i => 
+            i.machine_id === machine.id || (i.machine_ids && i.machine_ids.includes(machine.id))
+          );
           return (
             <Card key={machine.id} className="p-4">
               <div className="flex items-start justify-between mb-2">

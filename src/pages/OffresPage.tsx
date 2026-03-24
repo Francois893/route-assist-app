@@ -210,7 +210,7 @@ export default function OffresPage() {
 
   const cartTotal = cart.reduce((sum, c) => sum + c.equipment.price * c.quantity * (1 - c.discount / 100), 0);
   const servicesTotal = services.reduce((sum, s) => sum + s.price * (1 - s.discount / 100), 0);
-  const maintenanceTotal = maintenanceItems.reduce((sum, m) => sum + m.totalPrice * (1 - m.discount / 100), 0);
+  const maintenanceTotal = maintenanceItems.reduce((sum, m) => sum + m.prixUnitaire * m.nbMachines * (1 - m.discount / 100), 0);
   const grandTotal = cartTotal + servicesTotal + maintenanceTotal;
 
   const fmtPrice = (n: number) => {

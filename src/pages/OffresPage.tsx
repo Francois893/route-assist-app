@@ -427,8 +427,9 @@ export default function OffresPage() {
         const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
 
         g.machines.forEach((machine) => {
-          const desc = `Maintenance préventive ${machine.type} — Forfait ${g.forfait}`;
-          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true);
+          const line1 = `Maintenance préventive ${machine.type}`;
+          const line2 = `Forfait ${g.forfait}`;
+          drawRow("", line1, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true, line2);
 
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];

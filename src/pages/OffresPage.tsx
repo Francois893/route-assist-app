@@ -426,7 +426,7 @@ export default function OffresPage() {
   };
 
   const maintForfait = getForfait(maintDistance);
-  const maintPreview = calcMaintenancePrice(maintNbBacs, maintForfait.price);
+  const maintCalc = calcMaintenance(maintNbMachines, maintForfait.price);
 
   return (
     <div className="space-y-6">

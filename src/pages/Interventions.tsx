@@ -113,7 +113,8 @@ export default function Interventions() {
     setForm({
       client_id: inter.client_id, machine_ids: machineIds as string[], technician_id: inter.technician_id,
       date: inter.date, type: inter.type, description: inter.description || '',
-      duration: inter.duration || 0, travel_time: inter.travel_time || 0, notes: inter.notes || ''
+      duration: inter.duration || 0, travel_time: inter.travel_time || 0, notes: inter.notes || '',
+      status: inter.status,
     });
     setOpen(true);
   };

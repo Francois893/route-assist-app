@@ -689,8 +689,8 @@ export default function OffresPage() {
                 {maintenanceItems.map((m) => (
                   <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
                     <div className="flex-1 min-w-0">
-                      <Badge variant="outline" className="text-xs mb-1">Maintenance</Badge>
                       <p className="text-sm text-foreground truncate">{m.description}</p>
+                      <p className="text-xs text-muted-foreground">{m.nbMachines} machine{m.nbMachines > 1 ? "s" : ""} — P.U. : {fmtCurrency(m.prixUnitaire)}{m.remisePct > 0 ? ` (remise ${m.remisePct}%)` : ""}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Input

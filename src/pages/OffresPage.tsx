@@ -164,19 +164,21 @@ export default function OffresPage() {
   };
 
   const addMaintenance = () => {
-    if (maintNbBacs <= 0) return;
+    if (maintNbMachines <= 0) return;
     const forfait = getForfait(maintDistance);
-    const totalPrice = calcMaintenancePrice(maintNbBacs, forfait.price);
-    const desc = buildMaintenanceDescription(maintNbBacs, forfait.label);
+    const calc = calcMaintenance(maintNbMachines, forfait.price);
+    const desc = buildMaintenanceDescription(maintNbMachines, forfait.label);
     setMaintenanceItems((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        nbBacs: maintNbBacs,
+        nbMachines: maintNbMachines,
         distance: maintDistance,
         forfait: forfait.label,
-        prixForfait: forfait.price,
-        totalPrice,
+        prixBase: forfait.price,
+        prixUnitaire: calc.prixUnitaire,
+        remisePct: calc.remisePct,
+        totalPrice: calc.total,
         discount: 0,
         description: desc,
       },

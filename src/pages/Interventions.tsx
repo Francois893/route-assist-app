@@ -60,7 +60,7 @@ export default function Interventions() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     client_id: '', machine_ids: [] as string[], technician_id: '' as string | null, date: '',
-    type: 'installation', description: '', duration: 0, travel_time: 0, notes: ''
+    type: 'installation', description: '', duration: 0, travel_time: 0, notes: '', status: 'a-planifier'
   });
 
   const clientMachines = allMachines.filter(m => m.client_id === form.client_id);
@@ -86,14 +86,22 @@ export default function Interventions() {
   const handleSubmit = () => {
     if (!form.client_id) return;
     const payload = {
-      ...form,
+      client_id: form.client_id,
       machine_id: form.machine_ids[0] || null,
       machine_ids: form.machine_ids,
+      technician_id: form.technician_id,
+      date: form.date,
+      type: form.type,
+      description: form.description,
+      duration: form.duration,
+      travel_time: form.travel_time,
+      notes: form.notes,
+      status: form.status,
     };
     if (editId) {
       updateIntervention.mutate({ id: editId, ...payload }, { onSuccess: () => { setOpen(false); setEditId(null); } });
     } else {
-      addIntervention.mutate({ ...payload, status: form.date ? 'planifiee' : 'a-planifier', photos: [] } as any, { onSuccess: () => { setOpen(false); } });
+      addIntervention.mutate({ ...payload, photos: [] } as any, { onSuccess: () => { setOpen(false); } });
     }
   };
 
@@ -105,7 +113,8 @@ export default function Interventions() {
     setForm({
       client_id: inter.client_id, machine_ids: machineIds as string[], technician_id: inter.technician_id,
       date: inter.date, type: inter.type, description: inter.description || '',
-      duration: inter.duration || 0, travel_time: inter.travel_time || 0, notes: inter.notes || ''
+      duration: inter.duration || 0, travel_time: inter.travel_time || 0, notes: inter.notes || '',
+      status: inter.status,
     });
     setOpen(true);
   };
@@ -125,7 +134,7 @@ export default function Interventions() {
         <h1 className="text-2xl font-bold">Interventions</h1>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditId(null); }}>
           <DialogTrigger asChild>
-            <Button className="rounded-full" onClick={() => { setEditId(null); setForm({ client_id: '', machine_ids: [], technician_id: null, date: '', type: 'installation', description: '', duration: 0, travel_time: 0, notes: '' }); }}>
+            <Button className="rounded-full" onClick={() => { setEditId(null); setForm({ client_id: '', machine_ids: [], technician_id: null, date: '', type: 'installation', description: '', duration: 0, travel_time: 0, notes: '', status: 'a-planifier' }); }}>
               <Plus className="w-4 h-4 mr-1" /> Ajouter
             </Button>
           </DialogTrigger>
@@ -181,20 +190,18 @@ export default function Interventions() {
                 <div><Label>Trajet (min)</Label><Input type="number" value={form.travel_time} onChange={e => setForm({...form, travel_time: +e.target.value})} /></div>
               </div>
               <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
-              {editId && (
-                <div>
-                  <Label>Statut</Label>
-                  <Select value={interventions.find(i => i.id === editId)?.status || 'planifiee'} onValueChange={v => changeStatus(editId, v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="a-planifier">A planifier</SelectItem>
-                      <SelectItem value="planifiee">Planifiée</SelectItem>
-                      <SelectItem value="en-cours">En cours</SelectItem>
-                      <SelectItem value="terminee">Terminée</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div>
+                <Label>Statut</Label>
+                <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a-planifier">A planifier</SelectItem>
+                    <SelectItem value="planifiee">Planifiée</SelectItem>
+                    <SelectItem value="en-cours">En cours</SelectItem>
+                    <SelectItem value="terminee">Terminée</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button onClick={handleSubmit} className="w-full" disabled={addIntervention.isPending || updateIntervention.isPending}>
                 {editId ? 'Mettre à jour' : 'Créer'}
               </Button>

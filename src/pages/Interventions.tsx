@@ -60,7 +60,7 @@ export default function Interventions() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     client_id: '', machine_ids: [] as string[], technician_id: '' as string | null, date: '',
-    type: 'installation', description: '', duration: 0, travel_time: 0, notes: ''
+    type: 'installation', description: '', duration: 0, travel_time: 0, notes: '', status: 'a-planifier'
   });
 
   const clientMachines = allMachines.filter(m => m.client_id === form.client_id);

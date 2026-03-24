@@ -381,9 +381,11 @@ export default function OffresPage() {
     if (maintenanceItems.length > 0) {
       drawSectionSep("MAINTENANCE");
       maintenanceItems.forEach((m) => {
-        const lineTotal = m.totalPrice * (1 - m.discount / 100);
-        const remiseStr = m.discount > 0 ? `${m.discount}%` : "-";
-        drawRow("", m.description, "1", fmtPrice(m.totalPrice), remiseStr, fmtPrice(lineTotal));
+        const effectiveUnit = m.prixUnitaire * (1 - m.discount / 100);
+        const lineTotal = effectiveUnit * m.nbMachines;
+        const totalRemise = m.remisePct + m.discount - (m.remisePct * m.discount / 100);
+        const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
+        drawRow("", m.description, String(m.nbMachines), fmtPrice(m.prixBase), remiseStr, fmtPrice(lineTotal));
       });
     }
 

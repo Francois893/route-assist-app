@@ -49,7 +49,7 @@ const MACHINE_TYPES = [
   "Micron Gear",
   "Macro",
 ] as const;
-type MachineType = typeof MACHINE_TYPES[number];
+type MachineType = (typeof MACHINE_TYPES)[number];
 
 interface MaintenanceMachine {
   id: string;
@@ -83,14 +83,10 @@ function getForfait(distance: number): { label: "A" | "B" | "C"; price: number }
 
 function calcMaintenance(nbMachines: number, prixBase: number) {
   if (nbMachines <= 0) return { total: 0, prixUnitaire: 0, remisePct: 0 };
-  const total = prixBase + (nbMachines - 1) * prixBase * 0.60;
+  const total = prixBase + (nbMachines - 1) * prixBase * 0.6;
   const prixUnitaire = total / nbMachines;
   const remisePct = (1 - prixUnitaire / prixBase) * 100;
   return { total, prixUnitaire, remisePct: Math.round(remisePct) };
-}
-
-function buildMaintenanceDescription(nbMachines: number, forfait: "A" | "B" | "C"): string {
-  return `Maintenance préventive — Forfait ${forfait}`;
 }
 
 export default function OffresPage() {
@@ -117,7 +113,9 @@ export default function OffresPage() {
       if (data) setClients(data);
     });
     const now = new Date();
-    setOffreNumero(`EO${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`);
+    setOffreNumero(
+      `EO${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`
+    );
   }, []);
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
@@ -132,9 +130,7 @@ export default function OffresPage() {
     setCart((prev) => {
       const existing = prev.find((c) => c.equipment.id === eq.id);
       if (existing) {
-        return prev.map((c) =>
-          c.equipment.id === eq.id ? { ...c, quantity: c.quantity + 1 } : c
-        );
+        return prev.map((c) => (c.equipment.id === eq.id ? { ...c, quantity: c.quantity + 1 } : c));
       }
       return [...prev, { equipment: eq, quantity: 1, discount: 0 }];
     });
@@ -143,20 +139,12 @@ export default function OffresPage() {
 
   const updateQuantity = (id: string, delta: number) => {
     setCart((prev) =>
-      prev
-        .map((c) =>
-          c.equipment.id === id ? { ...c, quantity: Math.max(0, c.quantity + delta) } : c
-        )
-        .filter((c) => c.quantity > 0)
+      prev.map((c) => (c.equipment.id === id ? { ...c, quantity: Math.max(0, c.quantity + delta) } : c)).filter((c) => c.quantity > 0)
     );
   };
 
   const updateDiscount = (id: string, discount: number) => {
-    setCart((prev) =>
-      prev.map((c) =>
-        c.equipment.id === id ? { ...c, discount: Math.min(100, Math.max(0, discount)) } : c
-      )
-    );
+    setCart((prev) => prev.map((c) => (c.equipment.id === id ? { ...c, discount: Math.min(100, Math.max(0, discount)) } : c)));
   };
 
   const removeFromCart = (id: string) => {
@@ -174,54 +162,63 @@ export default function OffresPage() {
     toast.success("Prestation ajoutée");
   };
 
-  const addMaintenance = () => {
-    if (maintNbMachines <= 0) return;
+  // ── Maintenance machine management ──
+  const addMaintMachine = () => {
+    setMaintMachines((prev) => [...prev, { id: crypto.randomUUID(), type: maintNewType }]);
+  };
+
+  const removeMaintMachine = (id: string) => {
+    setMaintMachines((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const updateMaintMachineType = (id: string, type: MachineType) => {
+    setMaintMachines((prev) => prev.map((m) => (m.id === id ? { ...m, type } : m)));
+  };
+
+  const addMaintenanceGroup = () => {
+    if (maintMachines.length <= 0) return;
     const forfait = getForfait(maintDistance);
-    const calc = calcMaintenance(maintNbMachines, forfait.price);
-    const desc = buildMaintenanceDescription(maintNbMachines, forfait.label);
-    setMaintenanceItems((prev) => [
+    setMaintenanceGroups((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        nbMachines: maintNbMachines,
+        machines: [...maintMachines],
         distance: maintDistance,
         forfait: forfait.label,
         prixBase: forfait.price,
-        prixUnitaire: calc.prixUnitaire,
-        remisePct: calc.remisePct,
-        totalPrice: calc.total,
         discount: 0,
-        description: desc,
       },
     ]);
+    setMaintMachines([]);
     toast.success("Forfait maintenance ajouté");
   };
 
-  const removeMaintenanceItem = (id: string) => {
-    setMaintenanceItems((prev) => prev.filter((m) => m.id !== id));
+  const removeMaintenanceGroup = (id: string) => {
+    setMaintenanceGroups((prev) => prev.filter((g) => g.id !== id));
   };
 
   const updateMaintenanceDiscount = (id: string, discount: number) => {
-    setMaintenanceItems((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, discount: Math.min(100, Math.max(0, discount)) } : m))
+    setMaintenanceGroups((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, discount: Math.min(100, Math.max(0, discount)) } : g))
     );
   };
 
   const updateServiceDiscount = (id: string, discount: number) => {
-    setServices((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, discount: Math.min(100, Math.max(0, discount)) } : s))
-    );
+    setServices((prev) => prev.map((s) => (s.id === id ? { ...s, discount: Math.min(100, Math.max(0, discount)) } : s)));
   };
 
   const removeService = (id: string) => {
     setServices((prev) => prev.filter((s) => s.id !== id));
   };
 
-  const totalItems = cart.length + services.length + maintenanceItems.length;
+  const totalItems = cart.length + services.length + maintenanceGroups.length;
 
   const cartTotal = cart.reduce((sum, c) => sum + c.equipment.price * c.quantity * (1 - c.discount / 100), 0);
   const servicesTotal = services.reduce((sum, s) => sum + s.price * (1 - s.discount / 100), 0);
-  const maintenanceTotal = maintenanceItems.reduce((sum, m) => sum + m.prixUnitaire * m.nbMachines * (1 - m.discount / 100), 0);
+  const maintenanceTotal = maintenanceGroups.reduce((sum, g) => {
+    const calc = calcMaintenance(g.machines.length, g.prixBase);
+    return sum + calc.total * (1 - g.discount / 100);
+  }, 0);
   const grandTotal = cartTotal + servicesTotal + maintenanceTotal;
 
   const fmtPrice = (n: number) => {
@@ -230,9 +227,7 @@ export default function OffresPage() {
     return `${intPart},${parts[1]}`;
   };
 
-  const fmtCurrency = (n: number) => {
-    return `${fmtPrice(n)} €`;
-  };
+  const fmtCurrency = (n: number) => `${fmtPrice(n)} €`;
 
   const exportPDF = () => {
     if (!selectedClient) {
@@ -246,9 +241,7 @@ export default function OffresPage() {
     const margin = 14;
     const rightCol = 120;
 
-    // Colors — cyan/teal matching app theme
     const cyan = { r: 0, g: 172, b: 163 };
-    const darkCyan = { r: 0, g: 130, b: 125 };
     const lightBg = { r: 235, g: 248, b: 247 };
     const white = { r: 255, g: 255, b: 255 };
 
@@ -266,7 +259,6 @@ export default function OffresPage() {
     doc.setLineWidth(0.6);
     doc.line(margin, 27, w - margin, 27);
 
-    // Company details
     let y = 35;
     doc.setFontSize(8);
     doc.setTextColor(50, 50, 60);
@@ -277,7 +269,6 @@ export default function OffresPage() {
     doc.text("Tel.: +33 1 00 00 00 00", margin, y + 8);
     doc.text("www.techfield.fr", margin, y + 12);
 
-    // Client box
     doc.setFillColor(lightBg.r, lightBg.g, lightBg.b);
     doc.roundedRect(rightCol, y - 5, w - rightCol - margin, 28, 2, 2, "F");
     doc.setFont("helvetica", "bold");
@@ -291,7 +282,6 @@ export default function OffresPage() {
     doc.text(selectedClient.city, rightCol + 4, y + 16);
     if (selectedClient.phone) doc.text(`Tel: ${selectedClient.phone}`, rightCol + 4, y + 21);
 
-    // ── OFFER INFO ──
     y = 70;
     doc.setFontSize(8);
     doc.setTextColor(50, 50, 60);
@@ -317,7 +307,6 @@ export default function OffresPage() {
     const colRemise = 158;
     const colMontant = w - margin;
 
-    // Table header
     doc.setFillColor(cyan.r, cyan.g, cyan.b);
     doc.rect(margin, y, w - 2 * margin, 8, "F");
     doc.setFontSize(7.5);
@@ -337,7 +326,10 @@ export default function OffresPage() {
     let rowIndex = 0;
 
     const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string) => {
-      if (y > h - 45) { doc.addPage(); y = 20; }
+      if (y > h - 45) {
+        doc.addPage();
+        y = 20;
+      }
       if (rowIndex % 2 === 0) {
         doc.setFillColor(lightBg.r, lightBg.g, lightBg.b);
         doc.rect(margin, y - 1, w - 2 * margin, 7, "F");
@@ -359,7 +351,10 @@ export default function OffresPage() {
     };
 
     const drawSectionSep = (title: string) => {
-      if (y > h - 45) { doc.addPage(); y = 20; }
+      if (y > h - 45) {
+        doc.addPage();
+        y = 20;
+      }
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(cyan.r, cyan.g, cyan.b);
@@ -377,26 +372,25 @@ export default function OffresPage() {
       cart.forEach((item) => {
         const lineTotal = item.equipment.price * item.quantity * (1 - item.discount / 100);
         const remiseStr = item.discount > 0 ? `${item.discount}%` : "-";
-        drawRow(
-          item.equipment.reference.replace("MEL-", ""),
-          item.equipment.designation,
-          String(item.quantity),
-          fmtPrice(item.equipment.price),
-          remiseStr,
-          fmtPrice(lineTotal)
-        );
+        drawRow(item.equipment.reference.replace("MEL-", ""), item.equipment.designation, String(item.quantity), fmtPrice(item.equipment.price), remiseStr, fmtPrice(lineTotal));
       });
     }
 
-    // Maintenance items
-    if (maintenanceItems.length > 0) {
+    // Maintenance items — one line per machine
+    if (maintenanceGroups.length > 0) {
       drawSectionSep("MAINTENANCE");
-      maintenanceItems.forEach((m) => {
-        const effectiveUnit = m.prixUnitaire * (1 - m.discount / 100);
-        const lineTotal = effectiveUnit * m.nbMachines;
-        const totalRemise = m.remisePct + m.discount - (m.remisePct * m.discount / 100);
+      maintenanceGroups.forEach((g) => {
+        const nb = g.machines.length;
+        const calc = calcMaintenance(nb, g.prixBase);
+        const effectiveUnit = calc.prixUnitaire * (1 - g.discount / 100);
+        const totalRemise = calc.remisePct + g.discount - (calc.remisePct * g.discount) / 100;
         const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
-        drawRow("", m.description, String(m.nbMachines), fmtPrice(m.prixBase), remiseStr, fmtPrice(lineTotal));
+
+        g.machines.forEach((machine, idx) => {
+          const lineTotal = effectiveUnit;
+          const desc = `Maintenance préventive ${machine.type} — Forfait ${g.forfait}`;
+          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(lineTotal));
+        });
       });
     }
 
@@ -417,7 +411,6 @@ export default function OffresPage() {
     doc.line(margin, y, w - margin, y);
     y += 8;
 
-    // Total net HT
     doc.setFillColor(cyan.r, cyan.g, cyan.b);
     doc.roundedRect(colPU - 20, y - 2, w - margin - colPU + 22, 16, 2, 2, "F");
     doc.setTextColor(white.r, white.g, white.b);
@@ -429,7 +422,6 @@ export default function OffresPage() {
 
     y += 24;
 
-    // ── FOOTER ──
     doc.setFontSize(6);
     doc.setTextColor(140, 140, 150);
     doc.text("TechField Solutions — Document généré automatiquement", w / 2, h - 8, { align: "center" });
@@ -439,7 +431,7 @@ export default function OffresPage() {
   };
 
   const maintForfait = getForfait(maintDistance);
-  const maintCalc = calcMaintenance(maintNbMachines, maintForfait.price);
+  const maintCalc = calcMaintenance(maintMachines.length, maintForfait.price);
 
   return (
     <div className="space-y-6">
@@ -465,12 +457,7 @@ export default function OffresPage() {
               1. Sélectionner le client
             </CardTitle>
             {selectedClient && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setClientInfoOpen(!clientInfoOpen)}
-                className="gap-1 text-xs text-muted-foreground"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setClientInfoOpen(!clientInfoOpen)} className="gap-1 text-xs text-muted-foreground">
                 {clientInfoOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 {clientInfoOpen ? "Réduire" : "Détails"}
               </Button>
@@ -484,7 +471,9 @@ export default function OffresPage() {
             </SelectTrigger>
             <SelectContent>
               {clients.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name} — {c.city}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name} — {c.city}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -520,29 +509,29 @@ export default function OffresPage() {
             <CardContent>
               <Tabs defaultValue="materiel" className="space-y-4">
                 <TabsList className="bg-secondary">
-                  <TabsTrigger value="materiel" className="gap-2"><Package className="h-4 w-4" />Matériel</TabsTrigger>
-                  <TabsTrigger value="maintenance" className="gap-2"><Settings className="h-4 w-4" />Maintenance</TabsTrigger>
-                  <TabsTrigger value="intervention" className="gap-2"><Wrench className="h-4 w-4" />Intervention</TabsTrigger>
+                  <TabsTrigger value="materiel" className="gap-2">
+                    <Package className="h-4 w-4" />
+                    Matériel
+                  </TabsTrigger>
+                  <TabsTrigger value="maintenance" className="gap-2">
+                    <Settings className="h-4 w-4" />
+                    Maintenance
+                  </TabsTrigger>
+                  <TabsTrigger value="intervention" className="gap-2">
+                    <Wrench className="h-4 w-4" />
+                    Intervention
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="materiel" className="space-y-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Rechercher une référence..."
-                      value={refSearch}
-                      onChange={(e) => setRefSearch(e.target.value)}
-                      className="pl-10"
-                    />
+                    <Input placeholder="Rechercher une référence..." value={refSearch} onChange={(e) => setRefSearch(e.target.value)} className="pl-10" />
                   </div>
                   {refSearch && (
                     <div className="space-y-1 max-h-60 overflow-auto">
                       {filteredEquipment.map((eq) => (
-                        <Card
-                          key={eq.id}
-                          className="p-3 flex items-center justify-between cursor-pointer hover:border-primary/30 transition-colors"
-                          onClick={() => addToCart(eq)}
-                        >
+                        <Card key={eq.id} className="p-3 flex items-center justify-between cursor-pointer hover:border-primary/30 transition-colors" onClick={() => addToCart(eq)}>
                           <div className="min-w-0">
                             <span className="font-mono text-sm text-primary font-semibold">{eq.reference}</span>
                             <p className="text-xs text-muted-foreground truncate">{eq.designation}</p>
@@ -558,32 +547,63 @@ export default function OffresPage() {
                 </TabsContent>
 
                 <TabsContent value="maintenance" className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Calculez le forfait maintenance selon la distance et le nombre de machines
-                  </p>
+                  <p className="text-sm text-muted-foreground">Sélectionnez les machines et la distance pour calculer le forfait</p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs flex items-center gap-1">
-                        <Truck className="h-3 w-3" /> Nombre de machines
-                      </Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={maintNbBacsStr}
-                        onChange={(e) => setMaintNbBacsStr(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> Distance bureau / client (km)
-                      </Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={maintDistanceStr}
-                        onChange={(e) => setMaintDistanceStr(e.target.value)}
-                      />
+                  {/* Distance */}
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> Distance bureau / client (km)
+                    </Label>
+                    <Input type="number" min={0} value={maintDistanceStr} onChange={(e) => setMaintDistanceStr(e.target.value)} className="max-w-xs" />
+                  </div>
+
+                  {/* Machine list */}
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-1">
+                      <Truck className="h-3 w-3" /> Machines à maintenir
+                    </Label>
+
+                    {maintMachines.map((machine, idx) => (
+                      <div key={machine.id} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                        <span className="text-xs text-muted-foreground w-6">{idx + 1}.</span>
+                        <Select value={machine.type} onValueChange={(v) => updateMaintMachineType(machine.id, v as MachineType)}>
+                          <SelectTrigger className="flex-1 h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MACHINE_TYPES.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {idx === 0 ? fmtCurrency(maintForfait.price) : fmtCurrency(maintForfait.price * 0.6)}
+                        </Badge>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeMaintMachine(machine.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-2">
+                      <Select value={maintNewType} onValueChange={(v) => setMaintNewType(v as MachineType)}>
+                        <SelectTrigger className="flex-1 h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MACHINE_TYPES.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={addMaintMachine}>
+                        <Plus className="h-3 w-3" />
+                        Ajouter
+                      </Button>
                     </div>
                   </div>
 
@@ -600,12 +620,14 @@ export default function OffresPage() {
                       <p>{"50 - 200 km → Forfait B : 526,00 €"}</p>
                       <p>{"> 200 km → Forfait C : 821,15 €"}</p>
                     </div>
-                    {maintNbMachines > 0 && (
+                    {maintMachines.length > 0 && (
                       <div className="text-xs text-muted-foreground space-y-1 pt-1 border-t border-border">
                         <p>Prix de base unitaire : {fmtCurrency(maintForfait.price)}</p>
-                        <p>Quantité : {maintNbMachines} machine{maintNbMachines > 1 ? "s" : ""}</p>
-                        {maintCalc.remisePct > 0 && <p>Remise : {maintCalc.remisePct}%</p>}
-                        <p>Prix final unitaire : {fmtCurrency(maintCalc.prixUnitaire)}</p>
+                        <p>
+                          Quantité : {maintMachines.length} machine{maintMachines.length > 1 ? "s" : ""}
+                        </p>
+                        {maintCalc.remisePct > 0 && <p>Remise multi-machines : {maintCalc.remisePct}%</p>}
+                        <p>Prix final unitaire moyen : {fmtCurrency(maintCalc.prixUnitaire)}</p>
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -614,7 +636,7 @@ export default function OffresPage() {
                     </div>
                   </div>
 
-                  <Button onClick={addMaintenance} size="sm" className="gap-2" disabled={maintNbMachines <= 0}>
+                  <Button onClick={addMaintenanceGroup} size="sm" className="gap-2" disabled={maintMachines.length <= 0}>
                     <Plus className="h-3 w-3" />
                     Ajouter au panier
                   </Button>
@@ -625,21 +647,11 @@ export default function OffresPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="md:col-span-2">
                       <Label className="text-xs">Description</Label>
-                      <Textarea
-                        value={serviceDesc}
-                        onChange={(e) => setServiceDesc(e.target.value)}
-                        placeholder="Intervention corrective sur site..."
-                        rows={2}
-                      />
+                      <Textarea value={serviceDesc} onChange={(e) => setServiceDesc(e.target.value)} placeholder="Intervention corrective sur site..." rows={2} />
                     </div>
                     <div>
                       <Label className="text-xs">Montant HT (€)</Label>
-                      <Input
-                        type="number"
-                        value={servicePrice}
-                        onChange={(e) => setServicePrice(e.target.value)}
-                        placeholder="0.00"
-                      />
+                      <Input type="number" value={servicePrice} onChange={(e) => setServicePrice(e.target.value)} placeholder="0.00" />
                     </div>
                   </div>
                   <Button onClick={addService} size="sm" className="gap-2">
@@ -685,11 +697,11 @@ export default function OffresPage() {
                         className="w-20 h-7 text-xs"
                       />
                       {item.discount > 0 && (
-                        <Badge variant="outline" className="text-xs text-warning">-{item.discount}%</Badge>
+                        <Badge variant="outline" className="text-xs text-warning">
+                          -{item.discount}%
+                        </Badge>
                       )}
-                      <span className="text-sm font-semibold w-24 text-right">
-                        {fmtCurrency(item.equipment.price * item.quantity * (1 - item.discount / 100))}
-                      </span>
+                      <span className="text-sm font-semibold w-24 text-right">{fmtCurrency(item.equipment.price * item.quantity * (1 - item.discount / 100))}</span>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeFromCart(item.equipment.id)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -697,37 +709,55 @@ export default function OffresPage() {
                   </div>
                 ))}
 
-                {maintenanceItems.map((m) => (
-                  <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{m.description}</p>
-                      <p className="text-xs text-muted-foreground">{m.nbMachines} machine{m.nbMachines > 1 ? "s" : ""} — P.U. : {fmtCurrency(m.prixUnitaire)}{m.remisePct > 0 ? ` (remise ${m.remisePct}%)` : ""}</p>
+                {maintenanceGroups.map((g) => {
+                  const nb = g.machines.length;
+                  const calc = calcMaintenance(nb, g.prixBase);
+                  const groupTotal = calc.total * (1 - g.discount / 100);
+                  return (
+                    <div key={g.id} className="p-3 rounded-xl bg-secondary/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground">
+                            Maintenance Forfait {g.forfait} — {nb} machine{nb > 1 ? "s" : ""}
+                          </p>
+                          <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                            {g.machines.map((machine, idx) => (
+                              <p key={machine.id}>
+                                • {machine.type} — {fmtCurrency(idx === 0 && nb > 1 ? g.prixBase : calc.prixUnitaire)}
+                              </p>
+                            ))}
+                          </div>
+                          {calc.remisePct > 0 && <p className="text-xs text-muted-foreground mt-1">Remise multi-machines : {calc.remisePct}%</p>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Input
+                            type="number"
+                            value={g.discount || ""}
+                            onChange={(e) => updateMaintenanceDiscount(g.id, Number(e.target.value))}
+                            placeholder="Remise %"
+                            className="w-20 h-7 text-xs"
+                          />
+                          {g.discount > 0 && (
+                            <Badge variant="outline" className="text-xs text-warning">
+                              -{g.discount}%
+                            </Badge>
+                          )}
+                          <span className="text-sm font-semibold w-24 text-right">{fmtCurrency(groupTotal)}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeMaintenanceGroup(g.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={m.discount || ""}
-                        onChange={(e) => updateMaintenanceDiscount(m.id, Number(e.target.value))}
-                        placeholder="Remise %"
-                        className="w-20 h-7 text-xs"
-                      />
-                      {m.discount > 0 && (
-                        <Badge variant="outline" className="text-xs text-warning">-{m.discount}%</Badge>
-                      )}
-                      <span className="text-sm font-semibold w-24 text-right">
-                        {fmtCurrency(m.prixUnitaire * m.nbMachines * (1 - m.discount / 100))}
-                      </span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeMaintenanceItem(m.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {services.map((s) => (
                   <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
                     <div className="flex-1 min-w-0">
-                      <Badge variant="outline" className="text-xs mb-1">Prestation</Badge>
+                      <Badge variant="outline" className="text-xs mb-1">
+                        Prestation
+                      </Badge>
                       <p className="text-sm text-foreground truncate">{s.description}</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -739,11 +769,11 @@ export default function OffresPage() {
                         className="w-20 h-7 text-xs"
                       />
                       {s.discount > 0 && (
-                        <Badge variant="outline" className="text-xs text-warning">-{s.discount}%</Badge>
+                        <Badge variant="outline" className="text-xs text-warning">
+                          -{s.discount}%
+                        </Badge>
                       )}
-                      <span className="text-sm font-semibold w-24 text-right">
-                        {fmtCurrency(s.price * (1 - s.discount / 100))}
-                      </span>
+                      <span className="text-sm font-semibold w-24 text-right">{fmtCurrency(s.price * (1 - s.discount / 100))}</span>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeService(s.id)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>

@@ -63,20 +63,21 @@ interface ClientInfo {
 }
 
 function getForfait(distance: number): { label: "A" | "B" | "C"; price: number } {
-  if (distance < 50) return { label: "A", price: 400 };
-  if (distance <= 200) return { label: "B", price: 600 };
-  return { label: "C", price: 821 };
+  if (distance < 50) return { label: "A", price: 414 };
+  if (distance <= 200) return { label: "B", price: 526 };
+  return { label: "C", price: 821.15 };
 }
 
-function calcMaintenancePrice(nbBacs: number, forfaitPrice: number): number {
-  if (nbBacs <= 0) return 0;
-  const first = forfaitPrice;
-  const others = Math.max(0, nbBacs - 1) * forfaitPrice * 0.6;
-  return first + others;
+function calcMaintenance(nbMachines: number, prixBase: number) {
+  if (nbMachines <= 0) return { total: 0, prixUnitaire: 0, remisePct: 0 };
+  const total = prixBase + (nbMachines - 1) * prixBase * 0.60;
+  const prixUnitaire = total / nbMachines;
+  const remisePct = (1 - prixUnitaire / prixBase) * 100;
+  return { total, prixUnitaire, remisePct: Math.round(remisePct) };
 }
 
-function buildMaintenanceDescription(nbBacs: number, forfait: "A" | "B" | "C"): string {
-  return `Maintenance préventive ${nbBacs} bac${nbBacs > 1 ? "s" : ""} — Forfait ${forfait}`;
+function buildMaintenanceDescription(nbMachines: number, forfait: "A" | "B" | "C"): string {
+  return `Maintenance préventive — Forfait ${forfait}`;
 }
 
 export default function OffresPage() {

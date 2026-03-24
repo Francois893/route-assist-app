@@ -370,12 +370,10 @@ export default function OffresPage() {
       doc.setTextColor(30, 30, 40);
       doc.text(ref, colRef + 2, y + 4);
       if (twoLines) {
-        // Split designation into 2 lines
-        const maxLen = 45;
-        const line1 = desig.substring(0, maxLen);
-        const line2 = desig.substring(maxLen);
-        doc.text(line1, colDesig, y + 4);
-        if (line2) doc.text(line2, colDesig, y + 9);
+        doc.setFont("helvetica", "bold");
+        doc.text(desig, colDesig, y + 4);
+        doc.setFont("helvetica", "normal");
+        doc.text(desig2 || "", colDesig, y + 9);
         if (qty) doc.text(qty, colQte + 4, y + 7, { align: "center" });
         if (pu) doc.text(pu, colPU + 16, y + 7, { align: "right" });
         doc.text(remise, colRemise + 10, y + 7, { align: "center" });

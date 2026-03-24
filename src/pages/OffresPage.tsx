@@ -89,11 +89,6 @@ export default function OffresPage() {
   const [serviceDesc, setServiceDesc] = useState("");
   const [servicePrice, setServicePrice] = useState("");
   const [offreNumero, setOffreNumero] = useState("");
-  const [commandeRef, setCommandeRef] = useState("");
-  const [transporteur, setTransporteur] = useState("");
-  const [delaiLivraison, setDelaiLivraison] = useState("");
-  const [conditionsPaiement, setConditionsPaiement] = useState("VIREMENT 60 J");
-  const [validiteOffre, setValiditeOffre] = useState("");
   const [clientInfoOpen, setClientInfoOpen] = useState(true);
 
   // Maintenance form — string state for clearable inputs
@@ -109,9 +104,6 @@ export default function OffresPage() {
     });
     const now = new Date();
     setOffreNumero(`EO${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`);
-    const validity = new Date(now);
-    validity.setMonth(validity.getMonth() + 3);
-    setValiditeOffre(validity.toLocaleDateString("fr-FR"));
   }, []);
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
@@ -294,8 +286,6 @@ export default function OffresPage() {
     doc.setFont("helvetica", "normal");
     doc.text("Date:", margin, y + 5);
     doc.text(new Date().toLocaleDateString("fr-FR"), margin + 25, y + 5);
-    if (commandeRef) { doc.text("V/COMMANDE N°:", margin, y + 10); doc.text(commandeRef, margin + 35, y + 10); }
-    if (transporteur) { doc.text("TRANSPORTEUR:", margin, y + 15); doc.text(transporteur, margin + 35, y + 15); }
 
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
@@ -421,17 +411,6 @@ export default function OffresPage() {
 
     y += 24;
 
-    // ── CONDITIONS ──
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(70, 70, 80);
-    doc.text("Devise", margin, y); doc.text("Euros", margin + 40, y);
-    doc.text("Conditions de règlement", margin, y + 5); doc.text(conditionsPaiement, margin + 40, y + 5);
-    if (delaiLivraison) { doc.text("Délai de livraison", margin, y + 10); doc.text(delaiLivraison, margin + 40, y + 10); }
-    doc.text("Offre valable pour les envois jusqu'au", margin, y + 15); doc.text(validiteOffre, margin + 55, y + 15);
-    doc.setTextColor(110, 110, 120);
-    doc.text("Prix exonérés de TVA", w - margin, y + 15, { align: "right" });
-
     // ── FOOTER ──
     doc.setFontSize(6);
     doc.setTextColor(140, 140, 150);
@@ -499,30 +478,10 @@ export default function OffresPage() {
                 {selectedClient.address && <p className="text-muted-foreground">{selectedClient.address}</p>}
                 <p className="text-muted-foreground">{selectedClient.city}</p>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+              <div className="grid grid-cols-2 gap-3 pt-2">
                 <div>
                   <Label className="text-xs">N° Offre</Label>
                   <Input value={offreNumero} onChange={(e) => setOffreNumero(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Conditions paiement</Label>
-                  <Input value={conditionsPaiement} onChange={(e) => setConditionsPaiement(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Transporteur</Label>
-                  <Input value={transporteur} onChange={(e) => setTransporteur(e.target.value)} placeholder="FED EX..." />
-                </div>
-                <div>
-                  <Label className="text-xs">Réf. commande client</Label>
-                  <Input value={commandeRef} onChange={(e) => setCommandeRef(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Délai de livraison</Label>
-                  <Input value={delaiLivraison} onChange={(e) => setDelaiLivraison(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Validité offre</Label>
-                  <Input value={validiteOffre} onChange={(e) => setValiditeOffre(e.target.value)} />
                 </div>
               </div>
             </>

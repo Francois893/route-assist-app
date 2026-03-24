@@ -190,20 +190,18 @@ export default function Interventions() {
                 <div><Label>Trajet (min)</Label><Input type="number" value={form.travel_time} onChange={e => setForm({...form, travel_time: +e.target.value})} /></div>
               </div>
               <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
-              {editId && (
-                <div>
-                  <Label>Statut</Label>
-                  <Select value={interventions.find(i => i.id === editId)?.status || 'planifiee'} onValueChange={v => changeStatus(editId, v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="a-planifier">A planifier</SelectItem>
-                      <SelectItem value="planifiee">Planifiée</SelectItem>
-                      <SelectItem value="en-cours">En cours</SelectItem>
-                      <SelectItem value="terminee">Terminée</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div>
+                <Label>Statut</Label>
+                <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a-planifier">A planifier</SelectItem>
+                    <SelectItem value="planifiee">Planifiée</SelectItem>
+                    <SelectItem value="en-cours">En cours</SelectItem>
+                    <SelectItem value="terminee">Terminée</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button onClick={handleSubmit} className="w-full" disabled={addIntervention.isPending || updateIntervention.isPending}>
                 {editId ? 'Mettre à jour' : 'Créer'}
               </Button>

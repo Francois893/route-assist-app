@@ -478,30 +478,10 @@ export default function OffresPage() {
                 {selectedClient.address && <p className="text-muted-foreground">{selectedClient.address}</p>}
                 <p className="text-muted-foreground">{selectedClient.city}</p>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+              <div className="grid grid-cols-2 gap-3 pt-2">
                 <div>
                   <Label className="text-xs">N° Offre</Label>
                   <Input value={offreNumero} onChange={(e) => setOffreNumero(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Conditions paiement</Label>
-                  <Input value={conditionsPaiement} onChange={(e) => setConditionsPaiement(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Transporteur</Label>
-                  <Input value={transporteur} onChange={(e) => setTransporteur(e.target.value)} placeholder="FED EX..." />
-                </div>
-                <div>
-                  <Label className="text-xs">Réf. commande client</Label>
-                  <Input value={commandeRef} onChange={(e) => setCommandeRef(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Délai de livraison</Label>
-                  <Input value={delaiLivraison} onChange={(e) => setDelaiLivraison(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Validité offre</Label>
-                  <Input value={validiteOffre} onChange={(e) => setValiditeOffre(e.target.value)} />
                 </div>
               </div>
             </>

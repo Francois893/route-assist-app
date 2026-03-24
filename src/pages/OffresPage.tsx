@@ -628,7 +628,7 @@ export default function OffresPage() {
                           {parts.length > 0 && (
                             <div className="px-8 pb-2 text-xs text-muted-foreground/70 space-y-0.5">
                               {parts.map((p) => (
-                                <p key={p.reference}>└ {p.quantity}x réf {p.reference} : {p.designation}</p>
+                                <p key={p.reference}>└ {p.quantity}x réf {p.reference} : {p.designation} — {fmtCurrency(p.price)}</p>
                               ))}
                             </div>
                           )}

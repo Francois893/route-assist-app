@@ -12,6 +12,33 @@ import { fr } from "date-fns/locale";
 import jsPDF from "jspdf";
 import type { DbAudit } from "@/hooks/use-data";
 
+interface MachineAuditData {
+  machine_id: string;
+  machine_name: string;
+  etat_general: string;
+  securite: string;
+  proprete: string;
+  usure: string;
+  checklist: { id: string; label: string; checked: boolean; comment: string }[];
+  observations: string;
+}
+
+const etatLabel: Record<string, string> = { bon: "Bon", moyen: "Moyen", mauvais: "Mauvais" };
+const securiteLabel: Record<string, string> = { conforme: "Conforme", "non-conforme": "Non conforme" };
+const usureLabel: Record<string, string> = { faible: "Faible", moyenne: "Moyenne", elevee: "Élevée" };
+
+const etatColor = (v: string | null) => v === "bon" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : v === "moyen" ? "bg-amber-500/15 text-amber-400 border-amber-500/20" : "bg-red-500/15 text-red-400 border-red-500/20";
+const securiteColor = (v: string | null) => v === "conforme" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-red-500/15 text-red-400 border-red-500/20";
+
+function getMachineAudits(audit: DbAudit): MachineAuditData[] {
+  const checklist = audit.checklist as any;
+  if (Array.isArray(checklist) && checklist.length > 0 && checklist[0]?.machine_id) {
+    return checklist as MachineAuditData[];
+  }
+  // Legacy format: single checklist for all machines
+  return [];
+}
+
 export default function AuditHistoryPage() {
   const { data: audits = [], isLoading } = useAudits();
   const { data: clients = [] } = useClients();
@@ -22,10 +49,7 @@ export default function AuditHistoryPage() {
   const [selectedAudit, setSelectedAudit] = useState<DbAudit | null>(null);
 
   const getAuditMachines = (audit: DbAudit) => {
-    const ids: string[] = (audit as any).machine_ids?.length
-      ? (audit as any).machine_ids
-      : [];
-    // Fallback to intervention's machines
+    const ids: string[] = (audit as any).machine_ids?.length ? (audit as any).machine_ids : [];
     if (ids.length === 0) {
       const inter = interventions.find(i => i.id === audit.intervention_id);
       if (inter) {
@@ -58,42 +82,39 @@ export default function AuditHistoryPage() {
     );
   });
 
-  const etatLabel: Record<string, string> = { bon: "Bon", moyen: "Moyen", mauvais: "Mauvais" };
-  const securiteLabel: Record<string, string> = { conforme: "Conforme", "non-conforme": "Non conforme" };
-  const usureLabel: Record<string, string> = { faible: "Faible", moyenne: "Moyenne", elevee: "Élevée" };
-
-  const etatColor = (v: string | null) => v === "bon" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : v === "moyen" ? "bg-amber-500/15 text-amber-400 border-amber-500/20" : "bg-red-500/15 text-red-400 border-red-500/20";
-  const securiteColor = (v: string | null) => v === "conforme" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-red-500/15 text-red-400 border-red-500/20";
-
   const exportPDF = (audit: DbAudit) => {
     const { client, machines: auditMachines, tech, inter } = getAuditContext(audit);
-    const machineNames = auditMachines.map((m: any) => m?.name).filter(Boolean).join(", ") || "—";
+    const perMachine = getMachineAudits(audit);
     const doc = new jsPDF();
     const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
     let y = 20;
     const lh = 7;
     const margin = 20;
     const contentW = pageW - margin * 2;
 
+    const checkPage = (needed: number) => {
+      if (y + needed > pageH - 20) { doc.addPage(); y = 20; }
+    };
+
+    // Header
     doc.setFillColor(14, 20, 27);
     doc.rect(0, 0, pageW, 45, "F");
     doc.setFillColor(0, 204, 204);
     doc.rect(0, 45, pageW, 2, "F");
-
     doc.setTextColor(0, 204, 204);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text("RAPPORT D'AUDIT", margin, 25);
-
     doc.setTextColor(180, 180, 180);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(`Date: ${format(new Date(audit.date), "dd MMMM yyyy", { locale: fr })}`, margin, 35);
     doc.text(`Réf: AUD-${audit.id.slice(0, 8).toUpperCase()}`, pageW - margin - 50, 35);
-
     y = 58;
 
     const drawInfoBlock = (title: string, items: [string, string][]) => {
+      checkPage(10 + items.length * lh + 5);
       doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 10 + items.length * lh, 3, 3, "F");
       doc.setTextColor(0, 204, 204);
@@ -101,18 +122,20 @@ export default function AuditHistoryPage() {
       doc.setFont("helvetica", "bold");
       doc.text(title, margin + 5, y + 7);
       y += 12;
-      doc.setTextColor(220, 220, 220);
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       items.forEach(([label, value]) => {
         doc.setTextColor(140, 140, 140);
         doc.text(label, margin + 5, y);
         doc.setTextColor(220, 220, 220);
-        doc.text(value, margin + 55, y);
+        const lines = doc.splitTextToSize(value, contentW - 65);
+        doc.text(lines[0] || "", margin + 55, y);
         y += lh;
       });
       y += 5;
     };
+
+    const machineNames = auditMachines.map((m: any) => m?.name).filter(Boolean).join(", ") || "—";
 
     drawInfoBlock("INFORMATIONS GÉNÉRALES", [
       ["Client :", client?.name || "—"],
@@ -121,47 +144,125 @@ export default function AuditHistoryPage() {
       ["Intervention :", inter?.description || "—"],
     ]);
 
-    drawInfoBlock("ÉVALUATION", [
-      ["État général :", etatLabel[audit.etat_general || ""] || "—"],
-      ["Sécurité :", securiteLabel[audit.securite || ""] || "—"],
-      ["Propreté :", etatLabel[audit.proprete || ""] || "—"],
-      ["Usure :", usureLabel[audit.usure || ""] || "—"],
-    ]);
-
-    const checklist = (audit.checklist as any[]) || [];
-    if (checklist.length > 0) {
-      doc.setFillColor(18, 25, 33);
-      doc.roundedRect(margin, y, contentW, 10 + checklist.length * (lh + 3), 3, 3, "F");
-      doc.setTextColor(0, 204, 204);
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("CHECKLIST DE VÉRIFICATION", margin + 5, y + 7);
-      y += 14;
-
-      checklist.forEach((item: any) => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        const icon = item.checked ? "✓" : "✗";
-        doc.setTextColor(item.checked ? 34 : 239, item.checked ? 197 : 68, item.checked ? 94 : 68);
+    // Per-machine details
+    if (perMachine.length > 0) {
+      perMachine.forEach((ma) => {
+        // Machine header
+        checkPage(50);
+        doc.setFillColor(0, 204, 204);
+        doc.roundedRect(margin, y, contentW, 8, 3, 3, "F");
+        doc.setTextColor(14, 20, 27);
+        doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        doc.text(icon, margin + 5, y);
-        doc.setTextColor(220, 220, 220);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text(item.label || "", margin + 14, y);
-        if (item.comment) {
-          y += lh - 2;
-          doc.setTextColor(140, 140, 140);
-          doc.setFontSize(8);
-          doc.text(`→ ${item.comment}`, margin + 14, y);
+        doc.text(`MACHINE : ${ma.machine_name}`, margin + 5, y + 6);
+        y += 14;
+
+        // Évaluation
+        drawInfoBlock("ÉVALUATION", [
+          ["État général :", etatLabel[ma.etat_general] || "—"],
+          ["Sécurité :", securiteLabel[ma.securite] || "—"],
+          ["Propreté :", etatLabel[ma.proprete] || "—"],
+          ["Usure :", usureLabel[ma.usure] || "—"],
+        ]);
+
+        // Checklist
+        if (ma.checklist?.length > 0) {
+          checkPage(14 + ma.checklist.length * 10);
+          doc.setFillColor(18, 25, 33);
+          const blockH = 14 + ma.checklist.length * (lh + 3);
+          doc.roundedRect(margin, y, contentW, blockH, 3, 3, "F");
+          doc.setTextColor(0, 204, 204);
+          doc.setFontSize(11);
+          doc.setFont("helvetica", "bold");
+          doc.text("CHECKLIST DE VÉRIFICATION", margin + 5, y + 7);
+          y += 14;
+
+          ma.checklist.forEach((item) => {
+            checkPage(lh + 5);
+            const icon = item.checked ? "✓" : "✗";
+            doc.setTextColor(item.checked ? 34 : 239, item.checked ? 197 : 68, item.checked ? 94 : 68);
+            doc.setFont("helvetica", "bold");
+            doc.text(icon, margin + 5, y);
+            doc.setTextColor(220, 220, 220);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.text(item.label || "", margin + 14, y);
+            if (item.comment) {
+              y += lh - 2;
+              doc.setTextColor(140, 140, 140);
+              doc.setFontSize(8);
+              doc.text(`→ ${item.comment}`, margin + 14, y);
+            }
+            y += lh;
+          });
+          y += 5;
         }
-        y += lh;
+
+        // Observations per machine
+        if (ma.observations) {
+          checkPage(20);
+          const lines = doc.splitTextToSize(ma.observations, contentW - 10);
+          doc.setFillColor(18, 25, 33);
+          doc.roundedRect(margin, y, contentW, 12 + lines.length * 5, 3, 3, "F");
+          doc.setTextColor(0, 204, 204);
+          doc.setFontSize(11);
+          doc.setFont("helvetica", "bold");
+          doc.text("OBSERVATIONS", margin + 5, y + 7);
+          y += 14;
+          doc.setTextColor(200, 200, 200);
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+          doc.text(lines, margin + 5, y);
+          y += lines.length * 5 + 5;
+        }
+
+        y += 5;
       });
-      y += 5;
+    } else {
+      // Legacy single evaluation
+      drawInfoBlock("ÉVALUATION", [
+        ["État général :", etatLabel[audit.etat_general || ""] || "—"],
+        ["Sécurité :", securiteLabel[audit.securite || ""] || "—"],
+        ["Propreté :", etatLabel[audit.proprete || ""] || "—"],
+        ["Usure :", usureLabel[audit.usure || ""] || "—"],
+      ]);
+
+      const legacyChecklist = (audit.checklist as any[]) || [];
+      if (legacyChecklist.length > 0 && !legacyChecklist[0]?.machine_id) {
+        checkPage(14 + legacyChecklist.length * 10);
+        doc.setFillColor(18, 25, 33);
+        doc.roundedRect(margin, y, contentW, 10 + legacyChecklist.length * (lh + 3), 3, 3, "F");
+        doc.setTextColor(0, 204, 204);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("CHECKLIST DE VÉRIFICATION", margin + 5, y + 7);
+        y += 14;
+        legacyChecklist.forEach((item: any) => {
+          checkPage(lh + 5);
+          const icon = item.checked ? "✓" : "✗";
+          doc.setTextColor(item.checked ? 34 : 239, item.checked ? 197 : 68, item.checked ? 94 : 68);
+          doc.setFont("helvetica", "bold");
+          doc.text(icon, margin + 5, y);
+          doc.setTextColor(220, 220, 220);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.text(item.label || "", margin + 14, y);
+          if (item.comment) {
+            y += lh - 2;
+            doc.setTextColor(140, 140, 140);
+            doc.setFontSize(8);
+            doc.text(`→ ${item.comment}`, margin + 14, y);
+          }
+          y += lh;
+        });
+        y += 5;
+      }
     }
 
+    // General recommandations
     const drawTextBlock = (title: string, text: string) => {
       if (!text) return;
-      if (y > 240) { doc.addPage(); y = 20; }
+      checkPage(25);
       const lines = doc.splitTextToSize(text, contentW - 10);
       doc.setFillColor(18, 25, 33);
       doc.roundedRect(margin, y, contentW, 12 + lines.length * 5, 3, 3, "F");
@@ -177,10 +278,12 @@ export default function AuditHistoryPage() {
       y += lines.length * 5 + 5;
     };
 
-    drawTextBlock("OBSERVATIONS", audit.observations || "");
+    if (perMachine.length === 0) {
+      drawTextBlock("OBSERVATIONS", audit.observations || "");
+    }
     drawTextBlock("RECOMMANDATIONS", audit.recommandations || "");
 
-    const pageH = doc.internal.pageSize.getHeight();
+    // Footer
     doc.setFillColor(0, 204, 204);
     doc.rect(0, pageH - 12, pageW, 12, "F");
     doc.setTextColor(14, 20, 27);
@@ -275,7 +378,9 @@ export default function AuditHistoryPage() {
           {selectedAudit && (() => {
             const { client, machines: auditMachines, tech, inter } = getAuditContext(selectedAudit);
             const machineNames = auditMachines.map((m: any) => m?.name).filter(Boolean).join(", ") || "—";
-            const checklist = (selectedAudit.checklist as any[]) || [];
+            const perMachine = getMachineAudits(selectedAudit);
+            const legacyChecklist = perMachine.length === 0 ? ((selectedAudit.checklist as any[]) || []) : [];
+
             return (
               <>
                 <DialogHeader>
@@ -304,61 +409,117 @@ export default function AuditHistoryPage() {
                   </div>
                 </div>
 
-                <Separator />
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    ["État", etatLabel[selectedAudit.etat_general || ""], etatColor(selectedAudit.etat_general)],
-                    ["Sécurité", securiteLabel[selectedAudit.securite || ""], securiteColor(selectedAudit.securite)],
-                    ["Propreté", etatLabel[selectedAudit.proprete || ""], etatColor(selectedAudit.proprete)],
-                    ["Usure", usureLabel[selectedAudit.usure || ""], etatColor(selectedAudit.usure === "faible" ? "bon" : selectedAudit.usure === "moyenne" ? "moyen" : "mauvais")],
-                  ].map(([label, value, color]) => (
-                    <div key={label as string} className="text-center p-3 rounded-xl bg-muted/30">
-                      <span className="text-xs text-muted-foreground block mb-1">{label}</span>
-                      <Badge variant="outline" className={color as string}>{value || "—"}</Badge>
-                    </div>
-                  ))}
-                </div>
-
-                {checklist.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="font-semibold text-sm mb-2">Checklist</h3>
-                      <div className="space-y-2">
-                        {checklist.map((item: any, i: number) => (
-                          <div key={i} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-muted/20">
-                            {item.checked ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                            ) : (
-                              <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                            )}
-                            <div>
-                              <span>{item.label}</span>
-                              {item.comment && <p className="text-xs text-muted-foreground mt-0.5">→ {item.comment}</p>}
+                {/* Per-machine detail view */}
+                {perMachine.length > 0 ? (
+                  perMachine.map((ma, idx) => (
+                    <div key={idx}>
+                      <Separator />
+                      <div className="mt-3">
+                        <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                          <Wrench className="w-4 h-4 text-primary" />
+                          {ma.machine_name}
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                          {[
+                            ["État", etatLabel[ma.etat_general], etatColor(ma.etat_general)],
+                            ["Sécurité", securiteLabel[ma.securite], securiteColor(ma.securite)],
+                            ["Propreté", etatLabel[ma.proprete], etatColor(ma.proprete)],
+                            ["Usure", usureLabel[ma.usure], etatColor(ma.usure === "faible" ? "bon" : ma.usure === "moyenne" ? "moyen" : "mauvais")],
+                          ].map(([label, value, color]) => (
+                            <div key={label as string} className="text-center p-2 rounded-xl bg-muted/30">
+                              <span className="text-xs text-muted-foreground block mb-1">{label}</span>
+                              <Badge variant="outline" className={color as string}>{value || "—"}</Badge>
                             </div>
+                          ))}
+                        </div>
+                        {ma.checklist?.length > 0 && (
+                          <div className="space-y-1.5 mb-3">
+                            {ma.checklist.map((item, i) => (
+                              <div key={i} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-muted/20">
+                                {item.checked ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                                )}
+                                <div>
+                                  <span>{item.label}</span>
+                                  {item.comment && <p className="text-xs text-muted-foreground mt-0.5">→ {item.comment}</p>}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
+                        {ma.observations && (
+                          <div className="p-3 rounded-xl bg-muted/20 text-sm">
+                            <span className="text-xs text-muted-foreground">Observations</span>
+                            <p className="mt-1">{ma.observations}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <>
+                    <Separator />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        ["État", etatLabel[selectedAudit.etat_general || ""], etatColor(selectedAudit.etat_general)],
+                        ["Sécurité", securiteLabel[selectedAudit.securite || ""], securiteColor(selectedAudit.securite)],
+                        ["Propreté", etatLabel[selectedAudit.proprete || ""], etatColor(selectedAudit.proprete)],
+                        ["Usure", usureLabel[selectedAudit.usure || ""], etatColor(selectedAudit.usure === "faible" ? "bon" : selectedAudit.usure === "moyenne" ? "moyen" : "mauvais")],
+                      ].map(([label, value, color]) => (
+                        <div key={label as string} className="text-center p-3 rounded-xl bg-muted/30">
+                          <span className="text-xs text-muted-foreground block mb-1">{label}</span>
+                          <Badge variant="outline" className={color as string}>{value || "—"}</Badge>
+                        </div>
+                      ))}
+                    </div>
+
+                    {legacyChecklist.length > 0 && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h3 className="font-semibold text-sm mb-2">Checklist</h3>
+                          <div className="space-y-2">
+                            {legacyChecklist.map((item: any, i: number) => (
+                              <div key={i} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-muted/20">
+                                {item.checked ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                                )}
+                                <div>
+                                  <span>{item.label}</span>
+                                  {item.comment && <p className="text-xs text-muted-foreground mt-0.5">→ {item.comment}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {(selectedAudit.observations || selectedAudit.recommandations) && (
+                      <>
+                        <Separator />
+                        {selectedAudit.observations && (
+                          <div>
+                            <h3 className="font-semibold text-sm mb-1">Observations</h3>
+                            <p className="text-sm text-muted-foreground">{selectedAudit.observations}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </>
                 )}
 
-                {(selectedAudit.observations || selectedAudit.recommandations) && (
+                {selectedAudit.recommandations && (
                   <>
                     <Separator />
-                    {selectedAudit.observations && (
-                      <div>
-                        <h3 className="font-semibold text-sm mb-1">Observations</h3>
-                        <p className="text-sm text-muted-foreground">{selectedAudit.observations}</p>
-                      </div>
-                    )}
-                    {selectedAudit.recommandations && (
-                      <div>
-                        <h3 className="font-semibold text-sm mb-1">Recommandations</h3>
-                        <p className="text-sm text-muted-foreground">{selectedAudit.recommandations}</p>
-                      </div>
-                    )}
+                    <div>
+                      <h3 className="font-semibold text-sm mb-1">Recommandations</h3>
+                      <p className="text-sm text-muted-foreground">{selectedAudit.recommandations}</p>
+                    </div>
                   </>
                 )}
 

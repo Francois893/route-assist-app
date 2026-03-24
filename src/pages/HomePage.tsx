@@ -12,6 +12,7 @@ import {
   Package,
   ShoppingCart,
   BarChart3,
+  ClipboardList,
 } from "lucide-react";
 
 const menuItems = [

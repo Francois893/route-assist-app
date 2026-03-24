@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Package,
   ShoppingCart,
+  ClipboardList,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -39,6 +40,7 @@ const items = [
   { title: "Devis", url: "/devis", icon: FileText },
   { title: "Matériel", url: "/materiel", icon: Package },
   { title: "Offres", url: "/offres", icon: ShoppingCart },
+  { title: "Inventaire", url: "/inventaire", icon: ClipboardList },
   { title: "Techniciens", url: "/techniciens", icon: BarChart3 },
 ];
 

@@ -546,13 +546,13 @@ export default function OffresPage() {
 
                 <TabsContent value="maintenance" className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Calculez le forfait maintenance selon la distance et le nombre de bacs
+                    Calculez le forfait maintenance selon la distance et le nombre de machines
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs flex items-center gap-1">
-                        <Truck className="h-3 w-3" /> Nombre de bacs
+                        <Truck className="h-3 w-3" /> Nombre de machines
                       </Label>
                       <Input
                         type="number"
@@ -583,22 +583,25 @@ export default function OffresPage() {
                       </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-1">
-                      <p>{"< 50 km → Forfait A : 400 €"}</p>
-                      <p>{"50 - 200 km → Forfait B : 600 €"}</p>
-                      <p>{"> 200 km → Forfait C : 821 €"}</p>
+                      <p>{"< 50 km → Forfait A : 414,00 €"}</p>
+                      <p>{"50 - 200 km → Forfait B : 526,00 €"}</p>
+                      <p>{"> 200 km → Forfait C : 821,15 €"}</p>
                     </div>
-                    {maintNbBacs > 1 && (
-                      <p className="text-xs text-muted-foreground">
-                        1er bac : {fmtCurrency(maintForfait.price)} — bacs suivants : {fmtCurrency(maintForfait.price * 0.6)} chacun (-40%)
-                      </p>
+                    {maintNbMachines > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-1 pt-1 border-t border-border">
+                        <p>Prix de base unitaire : {fmtCurrency(maintForfait.price)}</p>
+                        <p>Quantité : {maintNbMachines} machine{maintNbMachines > 1 ? "s" : ""}</p>
+                        {maintCalc.remisePct > 0 && <p>Remise : {maintCalc.remisePct}%</p>}
+                        <p>Prix final unitaire : {fmtCurrency(maintCalc.prixUnitaire)}</p>
+                      </div>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-border">
                       <span className="text-sm font-semibold">Total maintenance</span>
-                      <span className="text-lg font-bold text-primary">{fmtCurrency(maintPreview)}</span>
+                      <span className="text-lg font-bold text-primary">{fmtCurrency(maintCalc.total)}</span>
                     </div>
                   </div>
 
-                  <Button onClick={addMaintenance} size="sm" className="gap-2" disabled={maintNbBacs <= 0}>
+                  <Button onClick={addMaintenance} size="sm" className="gap-2" disabled={maintNbMachines <= 0}>
                     <Plus className="h-3 w-3" />
                     Ajouter au panier
                   </Button>

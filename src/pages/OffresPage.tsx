@@ -43,10 +43,12 @@ interface ServiceItem {
 
 interface MaintenanceItem {
   id: string;
-  nbBacs: number;
+  nbMachines: number;
   distance: number;
   forfait: "A" | "B" | "C";
-  prixForfait: number;
+  prixBase: number;
+  prixUnitaire: number;
+  remisePct: number;
   totalPrice: number;
   discount: number;
   description: string;
@@ -63,20 +65,21 @@ interface ClientInfo {
 }
 
 function getForfait(distance: number): { label: "A" | "B" | "C"; price: number } {
-  if (distance < 50) return { label: "A", price: 400 };
-  if (distance <= 200) return { label: "B", price: 600 };
-  return { label: "C", price: 821 };
+  if (distance < 50) return { label: "A", price: 414 };
+  if (distance <= 200) return { label: "B", price: 526 };
+  return { label: "C", price: 821.15 };
 }
 
-function calcMaintenancePrice(nbBacs: number, forfaitPrice: number): number {
-  if (nbBacs <= 0) return 0;
-  const first = forfaitPrice;
-  const others = Math.max(0, nbBacs - 1) * forfaitPrice * 0.6;
-  return first + others;
+function calcMaintenance(nbMachines: number, prixBase: number) {
+  if (nbMachines <= 0) return { total: 0, prixUnitaire: 0, remisePct: 0 };
+  const total = prixBase + (nbMachines - 1) * prixBase * 0.60;
+  const prixUnitaire = total / nbMachines;
+  const remisePct = (1 - prixUnitaire / prixBase) * 100;
+  return { total, prixUnitaire, remisePct: Math.round(remisePct) };
 }
 
-function buildMaintenanceDescription(nbBacs: number, forfait: "A" | "B" | "C"): string {
-  return `Maintenance préventive ${nbBacs} bac${nbBacs > 1 ? "s" : ""} — Forfait ${forfait}`;
+function buildMaintenanceDescription(nbMachines: number, forfait: "A" | "B" | "C"): string {
+  return `Maintenance préventive — Forfait ${forfait}`;
 }
 
 export default function OffresPage() {
@@ -95,7 +98,7 @@ export default function OffresPage() {
   const [maintNbBacsStr, setMaintNbBacsStr] = useState<string>("1");
   const [maintDistanceStr, setMaintDistanceStr] = useState<string>("0");
 
-  const maintNbBacs = parseInt(maintNbBacsStr) || 0;
+  const maintNbMachines = parseInt(maintNbBacsStr) || 0;
   const maintDistance = parseInt(maintDistanceStr) || 0;
 
   useEffect(() => {
@@ -161,19 +164,21 @@ export default function OffresPage() {
   };
 
   const addMaintenance = () => {
-    if (maintNbBacs <= 0) return;
+    if (maintNbMachines <= 0) return;
     const forfait = getForfait(maintDistance);
-    const totalPrice = calcMaintenancePrice(maintNbBacs, forfait.price);
-    const desc = buildMaintenanceDescription(maintNbBacs, forfait.label);
+    const calc = calcMaintenance(maintNbMachines, forfait.price);
+    const desc = buildMaintenanceDescription(maintNbMachines, forfait.label);
     setMaintenanceItems((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        nbBacs: maintNbBacs,
+        nbMachines: maintNbMachines,
         distance: maintDistance,
         forfait: forfait.label,
-        prixForfait: forfait.price,
-        totalPrice,
+        prixBase: forfait.price,
+        prixUnitaire: calc.prixUnitaire,
+        remisePct: calc.remisePct,
+        totalPrice: calc.total,
         discount: 0,
         description: desc,
       },
@@ -205,7 +210,7 @@ export default function OffresPage() {
 
   const cartTotal = cart.reduce((sum, c) => sum + c.equipment.price * c.quantity * (1 - c.discount / 100), 0);
   const servicesTotal = services.reduce((sum, s) => sum + s.price * (1 - s.discount / 100), 0);
-  const maintenanceTotal = maintenanceItems.reduce((sum, m) => sum + m.totalPrice * (1 - m.discount / 100), 0);
+  const maintenanceTotal = maintenanceItems.reduce((sum, m) => sum + m.prixUnitaire * m.nbMachines * (1 - m.discount / 100), 0);
   const grandTotal = cartTotal + servicesTotal + maintenanceTotal;
 
   const fmtPrice = (n: number) => {
@@ -376,9 +381,11 @@ export default function OffresPage() {
     if (maintenanceItems.length > 0) {
       drawSectionSep("MAINTENANCE");
       maintenanceItems.forEach((m) => {
-        const lineTotal = m.totalPrice * (1 - m.discount / 100);
-        const remiseStr = m.discount > 0 ? `${m.discount}%` : "-";
-        drawRow("", m.description, "1", fmtPrice(m.totalPrice), remiseStr, fmtPrice(lineTotal));
+        const effectiveUnit = m.prixUnitaire * (1 - m.discount / 100);
+        const lineTotal = effectiveUnit * m.nbMachines;
+        const totalRemise = m.remisePct + m.discount - (m.remisePct * m.discount / 100);
+        const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
+        drawRow("", m.description, String(m.nbMachines), fmtPrice(m.prixBase), remiseStr, fmtPrice(lineTotal));
       });
     }
 
@@ -421,7 +428,7 @@ export default function OffresPage() {
   };
 
   const maintForfait = getForfait(maintDistance);
-  const maintPreview = calcMaintenancePrice(maintNbBacs, maintForfait.price);
+  const maintCalc = calcMaintenance(maintNbMachines, maintForfait.price);
 
   return (
     <div className="space-y-6">
@@ -541,13 +548,13 @@ export default function OffresPage() {
 
                 <TabsContent value="maintenance" className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Calculez le forfait maintenance selon la distance et le nombre de bacs
+                    Calculez le forfait maintenance selon la distance et le nombre de machines
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs flex items-center gap-1">
-                        <Truck className="h-3 w-3" /> Nombre de bacs
+                        <Truck className="h-3 w-3" /> Nombre de machines
                       </Label>
                       <Input
                         type="number"
@@ -578,22 +585,25 @@ export default function OffresPage() {
                       </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-1">
-                      <p>{"< 50 km → Forfait A : 400 €"}</p>
-                      <p>{"50 - 200 km → Forfait B : 600 €"}</p>
-                      <p>{"> 200 km → Forfait C : 821 €"}</p>
+                      <p>{"< 50 km → Forfait A : 414,00 €"}</p>
+                      <p>{"50 - 200 km → Forfait B : 526,00 €"}</p>
+                      <p>{"> 200 km → Forfait C : 821,15 €"}</p>
                     </div>
-                    {maintNbBacs > 1 && (
-                      <p className="text-xs text-muted-foreground">
-                        1er bac : {fmtCurrency(maintForfait.price)} — bacs suivants : {fmtCurrency(maintForfait.price * 0.6)} chacun (-40%)
-                      </p>
+                    {maintNbMachines > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-1 pt-1 border-t border-border">
+                        <p>Prix de base unitaire : {fmtCurrency(maintForfait.price)}</p>
+                        <p>Quantité : {maintNbMachines} machine{maintNbMachines > 1 ? "s" : ""}</p>
+                        {maintCalc.remisePct > 0 && <p>Remise : {maintCalc.remisePct}%</p>}
+                        <p>Prix final unitaire : {fmtCurrency(maintCalc.prixUnitaire)}</p>
+                      </div>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-border">
                       <span className="text-sm font-semibold">Total maintenance</span>
-                      <span className="text-lg font-bold text-primary">{fmtCurrency(maintPreview)}</span>
+                      <span className="text-lg font-bold text-primary">{fmtCurrency(maintCalc.total)}</span>
                     </div>
                   </div>
 
-                  <Button onClick={addMaintenance} size="sm" className="gap-2" disabled={maintNbBacs <= 0}>
+                  <Button onClick={addMaintenance} size="sm" className="gap-2" disabled={maintNbMachines <= 0}>
                     <Plus className="h-3 w-3" />
                     Ajouter au panier
                   </Button>
@@ -679,8 +689,8 @@ export default function OffresPage() {
                 {maintenanceItems.map((m) => (
                   <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
                     <div className="flex-1 min-w-0">
-                      <Badge variant="outline" className="text-xs mb-1">Maintenance</Badge>
                       <p className="text-sm text-foreground truncate">{m.description}</p>
+                      <p className="text-xs text-muted-foreground">{m.nbMachines} machine{m.nbMachines > 1 ? "s" : ""} — P.U. : {fmtCurrency(m.prixUnitaire)}{m.remisePct > 0 ? ` (remise ${m.remisePct}%)` : ""}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Input
@@ -694,7 +704,7 @@ export default function OffresPage() {
                         <Badge variant="outline" className="text-xs text-warning">-{m.discount}%</Badge>
                       )}
                       <span className="text-sm font-semibold w-24 text-right">
-                        {fmtCurrency(m.totalPrice * (1 - m.discount / 100))}
+                        {fmtCurrency(m.prixUnitaire * m.nbMachines * (1 - m.discount / 100))}
                       </span>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeMaintenanceItem(m.id)}>
                         <Trash2 className="h-3 w-3" />

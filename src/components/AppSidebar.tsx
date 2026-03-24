@@ -1,4 +1,5 @@
 import {
+  Home,
   LayoutDashboard,
   Users,
   Wrench,

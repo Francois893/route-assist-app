@@ -89,11 +89,6 @@ export default function OffresPage() {
   const [serviceDesc, setServiceDesc] = useState("");
   const [servicePrice, setServicePrice] = useState("");
   const [offreNumero, setOffreNumero] = useState("");
-  const [commandeRef, setCommandeRef] = useState("");
-  const [transporteur, setTransporteur] = useState("");
-  const [delaiLivraison, setDelaiLivraison] = useState("");
-  const [conditionsPaiement, setConditionsPaiement] = useState("VIREMENT 60 J");
-  const [validiteOffre, setValiditeOffre] = useState("");
   const [clientInfoOpen, setClientInfoOpen] = useState(true);
 
   // Maintenance form — string state for clearable inputs

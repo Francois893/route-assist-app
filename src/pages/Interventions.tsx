@@ -86,14 +86,22 @@ export default function Interventions() {
   const handleSubmit = () => {
     if (!form.client_id) return;
     const payload = {
-      ...form,
+      client_id: form.client_id,
       machine_id: form.machine_ids[0] || null,
       machine_ids: form.machine_ids,
+      technician_id: form.technician_id,
+      date: form.date,
+      type: form.type,
+      description: form.description,
+      duration: form.duration,
+      travel_time: form.travel_time,
+      notes: form.notes,
+      status: form.status,
     };
     if (editId) {
       updateIntervention.mutate({ id: editId, ...payload }, { onSuccess: () => { setOpen(false); setEditId(null); } });
     } else {
-      addIntervention.mutate({ ...payload, status: form.date ? 'planifiee' : 'a-planifier', photos: [] } as any, { onSuccess: () => { setOpen(false); } });
+      addIntervention.mutate({ ...payload, photos: [] } as any, { onSuccess: () => { setOpen(false); } });
     }
   };
 

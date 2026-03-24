@@ -134,7 +134,7 @@ export default function Interventions() {
         <h1 className="text-2xl font-bold">Interventions</h1>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditId(null); }}>
           <DialogTrigger asChild>
-            <Button className="rounded-full" onClick={() => { setEditId(null); setForm({ client_id: '', machine_ids: [], technician_id: null, date: '', type: 'installation', description: '', duration: 0, travel_time: 0, notes: '' }); }}>
+            <Button className="rounded-full" onClick={() => { setEditId(null); setForm({ client_id: '', machine_ids: [], technician_id: null, date: '', type: 'installation', description: '', duration: 0, travel_time: 0, notes: '', status: 'a-planifier' }); }}>
               <Plus className="w-4 h-4 mr-1" /> Ajouter
             </Button>
           </DialogTrigger>

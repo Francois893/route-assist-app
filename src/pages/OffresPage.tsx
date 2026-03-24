@@ -403,7 +403,7 @@ export default function OffresPage() {
       });
     }
 
-    // Maintenance items — one line per machine
+    // Maintenance items — one line per machine + spare parts
     if (maintenanceGroups.length > 0) {
       drawSectionSep("MAINTENANCE");
       maintenanceGroups.forEach((g) => {
@@ -413,10 +413,15 @@ export default function OffresPage() {
         const totalRemise = calc.remisePct + g.discount - (calc.remisePct * g.discount) / 100;
         const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
 
-        g.machines.forEach((machine, idx) => {
-          const lineTotal = effectiveUnit;
+        g.machines.forEach((machine) => {
           const desc = `Maintenance préventive ${machine.type} — Forfait ${g.forfait}`;
-          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(lineTotal));
+          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit));
+
+          // Spare parts for this machine
+          const parts = MACHINE_SPARE_PARTS[machine.type] || [];
+          parts.forEach((part) => {
+            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), "inclus", "-", "inclus");
+          });
         });
       });
     }

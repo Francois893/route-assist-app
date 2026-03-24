@@ -411,17 +411,6 @@ export default function OffresPage() {
 
     y += 24;
 
-    // ── CONDITIONS ──
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(70, 70, 80);
-    doc.text("Devise", margin, y); doc.text("Euros", margin + 40, y);
-    doc.text("Conditions de règlement", margin, y + 5); doc.text(conditionsPaiement, margin + 40, y + 5);
-    if (delaiLivraison) { doc.text("Délai de livraison", margin, y + 10); doc.text(delaiLivraison, margin + 40, y + 10); }
-    doc.text("Offre valable pour les envois jusqu'au", margin, y + 15); doc.text(validiteOffre, margin + 55, y + 15);
-    doc.setTextColor(110, 110, 120);
-    doc.text("Prix exonérés de TVA", w - margin, y + 15, { align: "right" });
-
     // ── FOOTER ──
     doc.setFontSize(6);
     doc.setTextColor(140, 140, 150);

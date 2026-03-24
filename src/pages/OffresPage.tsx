@@ -98,18 +98,18 @@ export default function OffresPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
-  const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
+  const [maintenanceGroups, setMaintenanceGroups] = useState<MaintenanceGroup[]>([]);
   const [refSearch, setRefSearch] = useState("");
   const [serviceDesc, setServiceDesc] = useState("");
   const [servicePrice, setServicePrice] = useState("");
   const [offreNumero, setOffreNumero] = useState("");
   const [clientInfoOpen, setClientInfoOpen] = useState(true);
 
-  // Maintenance form — string state for clearable inputs
-  const [maintNbBacsStr, setMaintNbBacsStr] = useState<string>("1");
+  // Maintenance form
   const [maintDistanceStr, setMaintDistanceStr] = useState<string>("0");
+  const [maintMachines, setMaintMachines] = useState<MaintenanceMachine[]>([]);
+  const [maintNewType, setMaintNewType] = useState<MachineType>("B4 Piston");
 
-  const maintNbMachines = parseInt(maintNbBacsStr) || 0;
   const maintDistance = parseInt(maintDistanceStr) || 0;
 
   useEffect(() => {

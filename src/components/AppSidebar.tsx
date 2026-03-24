@@ -40,6 +40,7 @@ const items = [
   { title: "Devis", url: "/devis", icon: FileText },
   { title: "Matériel", url: "/materiel", icon: Package },
   { title: "Offres", url: "/offres", icon: ShoppingCart },
+  { title: "Inventaire", url: "/inventaire", icon: ClipboardList },
   { title: "Techniciens", url: "/techniciens", icon: BarChart3 },
 ];
 

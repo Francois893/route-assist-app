@@ -752,12 +752,22 @@ export default function OffresPage() {
                           <p className="text-sm font-semibold text-foreground">
                             Maintenance Forfait {g.forfait} — {nb} machine{nb > 1 ? "s" : ""}
                           </p>
-                          <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                            {g.machines.map((machine, idx) => (
-                              <p key={machine.id}>
-                                • {machine.type} — {fmtCurrency(idx === 0 && nb > 1 ? g.prixBase : calc.prixUnitaire)}
-                              </p>
-                            ))}
+                          <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                            {g.machines.map((machine, idx) => {
+                              const parts = MACHINE_SPARE_PARTS[machine.type] || [];
+                              return (
+                                <div key={machine.id}>
+                                  <p>• {machine.type} — {fmtCurrency(idx === 0 && nb > 1 ? g.prixBase : calc.prixUnitaire)}</p>
+                                  {parts.length > 0 && (
+                                    <div className="ml-4 text-muted-foreground/70 space-y-0.5">
+                                      {parts.map((p) => (
+                                        <p key={p.reference}>└ {p.quantity}x {p.reference} : {p.designation} (inclus)</p>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                           {calc.remisePct > 0 && <p className="text-xs text-muted-foreground mt-1">Remise multi-machines : {calc.remisePct}%</p>}
                         </div>

@@ -55,6 +55,7 @@ interface SparePart {
   reference: string;
   designation: string;
   quantity: number;
+  price: number;
 }
 
 const MACHINE_SPARE_PARTS: Record<string, SparePart[]> = {

@@ -595,29 +595,41 @@ export default function OffresPage() {
                       <Truck className="h-3 w-3" /> Machines à maintenir
                     </Label>
 
-                    {maintMachines.map((machine, idx) => (
-                      <div key={machine.id} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
-                        <span className="text-xs text-muted-foreground w-6">{idx + 1}.</span>
-                        <Select value={machine.type} onValueChange={(v) => updateMaintMachineType(machine.id, v as MachineType)}>
-                          <SelectTrigger className="flex-1 h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MACHINE_TYPES.map((t) => (
-                              <SelectItem key={t} value={t}>
-                                {t}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {idx === 0 ? fmtCurrency(maintForfait.price) : fmtCurrency(maintForfait.price * 0.6)}
-                        </Badge>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeMaintMachine(machine.id)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
+                    {maintMachines.map((machine, idx) => {
+                      const parts = MACHINE_SPARE_PARTS[machine.type] || [];
+                      return (
+                        <div key={machine.id} className="rounded-lg bg-secondary/50 overflow-hidden">
+                          <div className="flex items-center gap-2 p-2">
+                            <span className="text-xs text-muted-foreground w-6">{idx + 1}.</span>
+                            <Select value={machine.type} onValueChange={(v) => updateMaintMachineType(machine.id, v as MachineType)}>
+                              <SelectTrigger className="flex-1 h-8 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MACHINE_TYPES.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              {idx === 0 ? fmtCurrency(maintForfait.price) : fmtCurrency(maintForfait.price * 0.6)}
+                            </Badge>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeMaintMachine(machine.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {parts.length > 0 && (
+                            <div className="px-8 pb-2 text-xs text-muted-foreground/70 space-y-0.5">
+                              {parts.map((p) => (
+                                <p key={p.reference}>└ {p.quantity}x réf {p.reference} : {p.designation}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     <div className="flex items-center gap-2">
                       <Select value={maintNewType} onValueChange={(v) => setMaintNewType(v as MachineType)}>

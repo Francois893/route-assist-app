@@ -318,12 +318,8 @@ export default function OffresPage() {
     doc.setFontSize(8);
     doc.setTextColor(50, 50, 60);
     doc.setFont("helvetica", "normal");
-    doc.text("OFFRE N°:", margin, y);
-    doc.setFont("helvetica", "bold");
-    doc.text(offreNumero, margin + 25, y);
-    doc.setFont("helvetica", "normal");
-    doc.text("Date:", margin, y + 5);
-    doc.text(new Date().toLocaleDateString("fr-FR"), margin + 25, y + 5);
+    doc.text("Date:", margin, y);
+    doc.text(new Date().toLocaleDateString("fr-FR"), margin + 25, y);
 
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
@@ -357,28 +353,42 @@ export default function OffresPage() {
 
     let rowIndex = 0;
 
-    const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string) => {
+    const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string, twoLines?: boolean) => {
       if (y > h - 45) {
         doc.addPage();
         y = 20;
       }
+      const rowH = twoLines ? 14 : 7;
       if (rowIndex % 2 === 0) {
         doc.setFillColor(lightBg.r, lightBg.g, lightBg.b);
-        doc.rect(margin, y - 1, w - 2 * margin, 7, "F");
+        doc.rect(margin, y - 1, w - 2 * margin, rowH, "F");
       }
       doc.setDrawColor(210, 215, 225);
-      doc.line(margin, y + 6, w - margin, y + 6);
+      doc.line(margin, y + rowH - 1, w - margin, y + rowH - 1);
       doc.setFontSize(7.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(30, 30, 40);
       doc.text(ref, colRef + 2, y + 4);
-      const truncDesig = desig.length > 40 ? desig.substring(0, 40) + "..." : desig;
-      doc.text(truncDesig, colDesig, y + 4);
-      if (qty) doc.text(qty, colQte + 4, y + 4, { align: "center" });
-      if (pu) doc.text(pu, colPU + 16, y + 4, { align: "right" });
-      doc.text(remise, colRemise + 10, y + 4, { align: "center" });
-      doc.text(total, colMontant - 2, y + 4, { align: "right" });
-      y += 8;
+      if (twoLines) {
+        // Split designation into 2 lines
+        const maxLen = 45;
+        const line1 = desig.substring(0, maxLen);
+        const line2 = desig.substring(maxLen);
+        doc.text(line1, colDesig, y + 4);
+        if (line2) doc.text(line2, colDesig, y + 9);
+        if (qty) doc.text(qty, colQte + 4, y + 7, { align: "center" });
+        if (pu) doc.text(pu, colPU + 16, y + 7, { align: "right" });
+        doc.text(remise, colRemise + 10, y + 7, { align: "center" });
+        doc.text(total, colMontant - 2, y + 7, { align: "right" });
+      } else {
+        const truncDesig = desig.length > 40 ? desig.substring(0, 40) + "..." : desig;
+        doc.text(truncDesig, colDesig, y + 4);
+        if (qty) doc.text(qty, colQte + 4, y + 4, { align: "center" });
+        if (pu) doc.text(pu, colPU + 16, y + 4, { align: "right" });
+        doc.text(remise, colRemise + 10, y + 4, { align: "center" });
+        doc.text(total, colMontant - 2, y + 4, { align: "right" });
+      }
+      y += rowH + 1;
       rowIndex++;
     };
 
@@ -420,12 +430,12 @@ export default function OffresPage() {
 
         g.machines.forEach((machine) => {
           const desc = `Maintenance préventive ${machine.type} — Forfait ${g.forfait}`;
-          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit));
+          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true);
 
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];
           parts.forEach((part) => {
-            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), fmtPrice(part.price), "-", fmtPrice(part.price * part.quantity));
+            drawRow(part.reference, part.designation, String(part.quantity), fmtPrice(part.price), "-", fmtPrice(part.price * part.quantity));
           });
         });
       });
@@ -521,13 +531,7 @@ export default function OffresPage() {
                 {selectedClient.contact && <p className="text-muted-foreground">{selectedClient.contact}</p>}
                 {selectedClient.address && <p className="text-muted-foreground">{selectedClient.address}</p>}
                 <p className="text-muted-foreground">{selectedClient.city}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div>
-                  <Label className="text-xs">N° Offre</Label>
-                  <Input value={offreNumero} onChange={(e) => setOffreNumero(e.target.value)} />
-                </div>
-              </div>
+            </div>
             </>
           )}
         </CardContent>

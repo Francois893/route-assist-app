@@ -1,4 +1,5 @@
 import {
+  Home,
   LayoutDashboard,
   Users,
   Wrench,
@@ -26,7 +27,8 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
+  { title: "Accueil", url: "/", icon: Home },
+  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Machines", url: "/machines", icon: Cpu },
   { title: "Interventions", url: "/interventions", icon: Wrench },

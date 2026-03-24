@@ -286,8 +286,6 @@ export default function OffresPage() {
     doc.setFont("helvetica", "normal");
     doc.text("Date:", margin, y + 5);
     doc.text(new Date().toLocaleDateString("fr-FR"), margin + 25, y + 5);
-    if (commandeRef) { doc.text("V/COMMANDE N°:", margin, y + 10); doc.text(commandeRef, margin + 35, y + 10); }
-    if (transporteur) { doc.text("TRANSPORTEUR:", margin, y + 15); doc.text(transporteur, margin + 35, y + 15); }
 
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");

@@ -353,7 +353,7 @@ export default function OffresPage() {
 
     let rowIndex = 0;
 
-    const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string, twoLines?: boolean) => {
+    const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string, twoLines?: boolean, desig2?: string) => {
       if (y > h - 45) {
         doc.addPage();
         y = 20;

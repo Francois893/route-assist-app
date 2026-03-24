@@ -353,7 +353,7 @@ export default function OffresPage() {
 
     let rowIndex = 0;
 
-    const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string, twoLines?: boolean) => {
+    const drawRow = (ref: string, desig: string, qty: string, pu: string, remise: string, total: string, twoLines?: boolean, desig2?: string) => {
       if (y > h - 45) {
         doc.addPage();
         y = 20;
@@ -370,12 +370,10 @@ export default function OffresPage() {
       doc.setTextColor(30, 30, 40);
       doc.text(ref, colRef + 2, y + 4);
       if (twoLines) {
-        // Split designation into 2 lines
-        const maxLen = 45;
-        const line1 = desig.substring(0, maxLen);
-        const line2 = desig.substring(maxLen);
-        doc.text(line1, colDesig, y + 4);
-        if (line2) doc.text(line2, colDesig, y + 9);
+        doc.setFont("helvetica", "bold");
+        doc.text(desig, colDesig, y + 4);
+        doc.setFont("helvetica", "normal");
+        doc.text(desig2 || "", colDesig, y + 9);
         if (qty) doc.text(qty, colQte + 4, y + 7, { align: "center" });
         if (pu) doc.text(pu, colPU + 16, y + 7, { align: "right" });
         doc.text(remise, colRemise + 10, y + 7, { align: "center" });
@@ -429,8 +427,9 @@ export default function OffresPage() {
         const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
 
         g.machines.forEach((machine) => {
-          const desc = `Maintenance préventive ${machine.type} — Forfait ${g.forfait}`;
-          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true);
+          const line1 = `Maintenance préventive ${machine.type}`;
+          const line2 = `Forfait ${g.forfait}`;
+          drawRow("", line1, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true, line2);
 
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];

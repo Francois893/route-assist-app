@@ -43,10 +43,12 @@ interface ServiceItem {
 
 interface MaintenanceItem {
   id: string;
-  nbBacs: number;
+  nbMachines: number;
   distance: number;
   forfait: "A" | "B" | "C";
-  prixForfait: number;
+  prixBase: number;
+  prixUnitaire: number;
+  remisePct: number;
   totalPrice: number;
   discount: number;
   description: string;

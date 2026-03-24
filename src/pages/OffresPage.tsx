@@ -60,21 +60,21 @@ interface SparePart {
 
 const MACHINE_SPARE_PARTS: Record<string, SparePart[]> = {
   "B4 Piston": [
-    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
-    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
-    { reference: "10100053", designation: "Joint bouchon filtre pompe", quantity: 1 },
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1, price: 45.00 },
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1, price: 38.50 },
+    { reference: "10100053", designation: "Joint bouchon filtre pompe", quantity: 1, price: 12.80 },
   ],
   "B4 Gear": [
-    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
-    { reference: "10100053", designation: "Joint bouchon filtre", quantity: 1 },
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1, price: 38.50 },
+    { reference: "10100053", designation: "Joint bouchon filtre", quantity: 1, price: 12.80 },
   ],
   "B4 NS": [],
   "Micron Piston": [
-    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
-    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1, price: 45.00 },
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1, price: 67.30 },
   ],
   "Micron Gear": [
-    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1, price: 67.30 },
   ],
   "Macro": [],
 };

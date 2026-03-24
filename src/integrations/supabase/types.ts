@@ -252,6 +252,85 @@ export type Database = {
           },
         ]
       }
+      inventory: {
+        Row: {
+          created_at: string
+          designation: string
+          id: string
+          location_type: string
+          min_stock: number
+          quantity: number
+          reference: string
+          technician_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          designation?: string
+          id?: string
+          location_type?: string
+          min_stock?: number
+          quantity?: number
+          reference: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          designation?: string
+          id?: string
+          location_type?: string
+          min_stock?: number
+          quantity?: number
+          reference?: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "technicians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_history: {
+        Row: {
+          changed_at: string
+          id: string
+          inventory_id: string
+          new_quantity: number
+          note: string | null
+          old_quantity: number
+        }
+        Insert: {
+          changed_at?: string
+          id?: string
+          inventory_id: string
+          new_quantity: number
+          note?: string | null
+          old_quantity: number
+        }
+        Update: {
+          changed_at?: string
+          id?: string
+          inventory_id?: string
+          new_quantity?: number
+          note?: string | null
+          old_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_history_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machines: {
         Row: {
           client_id: string

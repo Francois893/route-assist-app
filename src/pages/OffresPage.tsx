@@ -55,25 +55,26 @@ interface SparePart {
   reference: string;
   designation: string;
   quantity: number;
+  price: number;
 }
 
 const MACHINE_SPARE_PARTS: Record<string, SparePart[]> = {
   "B4 Piston": [
-    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
-    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
-    { reference: "10100053", designation: "Joint bouchon filtre pompe", quantity: 1 },
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1, price: 45.00 },
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1, price: 38.50 },
+    { reference: "10100053", designation: "Joint bouchon filtre pompe", quantity: 1, price: 12.80 },
   ],
   "B4 Gear": [
-    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
-    { reference: "10100053", designation: "Joint bouchon filtre", quantity: 1 },
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1, price: 38.50 },
+    { reference: "10100053", designation: "Joint bouchon filtre", quantity: 1, price: 12.80 },
   ],
   "B4 NS": [],
   "Micron Piston": [
-    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
-    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1, price: 45.00 },
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1, price: 67.30 },
   ],
   "Micron Gear": [
-    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1, price: 67.30 },
   ],
   "Macro": [],
 };
@@ -244,7 +245,11 @@ export default function OffresPage() {
   const servicesTotal = services.reduce((sum, s) => sum + s.price * (1 - s.discount / 100), 0);
   const maintenanceTotal = maintenanceGroups.reduce((sum, g) => {
     const calc = calcMaintenance(g.machines.length, g.prixBase);
-    return sum + calc.total * (1 - g.discount / 100);
+    const sparePartsTotal = g.machines.reduce((s, m) => {
+      const parts = MACHINE_SPARE_PARTS[m.type] || [];
+      return s + parts.reduce((ps, p) => ps + p.price * p.quantity, 0);
+    }, 0);
+    return sum + calc.total * (1 - g.discount / 100) + sparePartsTotal;
   }, 0);
   const grandTotal = cartTotal + servicesTotal + maintenanceTotal;
 
@@ -420,7 +425,7 @@ export default function OffresPage() {
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];
           parts.forEach((part) => {
-            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), "inclus", "-", "inclus");
+            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), fmtPrice(part.price), "-", fmtPrice(part.price * part.quantity));
           });
         });
       });
@@ -623,7 +628,7 @@ export default function OffresPage() {
                           {parts.length > 0 && (
                             <div className="px-8 pb-2 text-xs text-muted-foreground/70 space-y-0.5">
                               {parts.map((p) => (
-                                <p key={p.reference}>└ {p.quantity}x réf {p.reference} : {p.designation}</p>
+                                <p key={p.reference}>└ {p.quantity}x réf {p.reference} : {p.designation} — {fmtCurrency(p.price)}</p>
                               ))}
                             </div>
                           )}
@@ -773,7 +778,7 @@ export default function OffresPage() {
                                   {parts.length > 0 && (
                                     <div className="ml-4 text-muted-foreground/70 space-y-0.5">
                                       {parts.map((p) => (
-                                        <p key={p.reference}>└ {p.quantity}x {p.reference} : {p.designation} (inclus)</p>
+                                        <p key={p.reference}>└ {p.quantity}x réf {p.reference} : {p.designation} — {fmtCurrency(p.price)}</p>
                                       ))}
                                     </div>
                                   )}

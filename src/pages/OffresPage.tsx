@@ -245,7 +245,11 @@ export default function OffresPage() {
   const servicesTotal = services.reduce((sum, s) => sum + s.price * (1 - s.discount / 100), 0);
   const maintenanceTotal = maintenanceGroups.reduce((sum, g) => {
     const calc = calcMaintenance(g.machines.length, g.prixBase);
-    return sum + calc.total * (1 - g.discount / 100);
+    const sparePartsTotal = g.machines.reduce((s, m) => {
+      const parts = MACHINE_SPARE_PARTS[m.type] || [];
+      return s + parts.reduce((ps, p) => ps + p.price * p.quantity, 0);
+    }, 0);
+    return sum + calc.total * (1 - g.discount / 100) + sparePartsTotal;
   }, 0);
   const grandTotal = cartTotal + servicesTotal + maintenanceTotal;
 

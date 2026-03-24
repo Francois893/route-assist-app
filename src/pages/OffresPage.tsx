@@ -531,13 +531,7 @@ export default function OffresPage() {
                 {selectedClient.contact && <p className="text-muted-foreground">{selectedClient.contact}</p>}
                 {selectedClient.address && <p className="text-muted-foreground">{selectedClient.address}</p>}
                 <p className="text-muted-foreground">{selectedClient.city}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div>
-                  <Label className="text-xs">N° Offre</Label>
-                  <Input value={offreNumero} onChange={(e) => setOffreNumero(e.target.value)} />
-                </div>
-              </div>
+            </div>
             </>
           )}
         </CardContent>

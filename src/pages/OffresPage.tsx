@@ -51,6 +51,33 @@ const MACHINE_TYPES = [
 ] as const;
 type MachineType = (typeof MACHINE_TYPES)[number];
 
+interface SparePart {
+  reference: string;
+  designation: string;
+  quantity: number;
+}
+
+const MACHINE_SPARE_PARTS: Record<string, SparePart[]> = {
+  "B4 Piston": [
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
+    { reference: "10100053", designation: "Joint bouchon filtre pompe", quantity: 1 },
+  ],
+  "B4 Gear": [
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
+    { reference: "10100053", designation: "Joint bouchon filtre", quantity: 1 },
+  ],
+  "B4 NS": [],
+  "Micron Piston": [
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+  ],
+  "Micron Gear": [
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+  ],
+  "Macro": [],
+};
+
 interface MaintenanceMachine {
   id: string;
   type: MachineType;

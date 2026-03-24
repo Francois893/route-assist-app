@@ -51,6 +51,33 @@ const MACHINE_TYPES = [
 ] as const;
 type MachineType = (typeof MACHINE_TYPES)[number];
 
+interface SparePart {
+  reference: string;
+  designation: string;
+  quantity: number;
+}
+
+const MACHINE_SPARE_PARTS: Record<string, SparePart[]> = {
+  "B4 Piston": [
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
+    { reference: "10100053", designation: "Joint bouchon filtre pompe", quantity: 1 },
+  ],
+  "B4 Gear": [
+    { reference: "10100090", designation: "Filtre pompe", quantity: 1 },
+    { reference: "10100053", designation: "Joint bouchon filtre", quantity: 1 },
+  ],
+  "B4 NS": [],
+  "Micron Piston": [
+    { reference: "10100070", designation: "Filtre plat dépôt", quantity: 1 },
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+  ],
+  "Micron Gear": [
+    { reference: "150029250", designation: "Filtre distributeur", quantity: 1 },
+  ],
+  "Macro": [],
+};
+
 interface MaintenanceMachine {
   id: string;
   type: MachineType;
@@ -376,7 +403,7 @@ export default function OffresPage() {
       });
     }
 
-    // Maintenance items — one line per machine
+    // Maintenance items — one line per machine + spare parts
     if (maintenanceGroups.length > 0) {
       drawSectionSep("MAINTENANCE");
       maintenanceGroups.forEach((g) => {
@@ -386,10 +413,15 @@ export default function OffresPage() {
         const totalRemise = calc.remisePct + g.discount - (calc.remisePct * g.discount) / 100;
         const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
 
-        g.machines.forEach((machine, idx) => {
-          const lineTotal = effectiveUnit;
+        g.machines.forEach((machine) => {
           const desc = `Maintenance préventive ${machine.type} — Forfait ${g.forfait}`;
-          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(lineTotal));
+          drawRow("", desc, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit));
+
+          // Spare parts for this machine
+          const parts = MACHINE_SPARE_PARTS[machine.type] || [];
+          parts.forEach((part) => {
+            drawRow(part.reference, `  └ ${part.designation}`, String(part.quantity), "inclus", "-", "inclus");
+          });
         });
       });
     }
@@ -563,29 +595,41 @@ export default function OffresPage() {
                       <Truck className="h-3 w-3" /> Machines à maintenir
                     </Label>
 
-                    {maintMachines.map((machine, idx) => (
-                      <div key={machine.id} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
-                        <span className="text-xs text-muted-foreground w-6">{idx + 1}.</span>
-                        <Select value={machine.type} onValueChange={(v) => updateMaintMachineType(machine.id, v as MachineType)}>
-                          <SelectTrigger className="flex-1 h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MACHINE_TYPES.map((t) => (
-                              <SelectItem key={t} value={t}>
-                                {t}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {idx === 0 ? fmtCurrency(maintForfait.price) : fmtCurrency(maintForfait.price * 0.6)}
-                        </Badge>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeMaintMachine(machine.id)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
+                    {maintMachines.map((machine, idx) => {
+                      const parts = MACHINE_SPARE_PARTS[machine.type] || [];
+                      return (
+                        <div key={machine.id} className="rounded-lg bg-secondary/50 overflow-hidden">
+                          <div className="flex items-center gap-2 p-2">
+                            <span className="text-xs text-muted-foreground w-6">{idx + 1}.</span>
+                            <Select value={machine.type} onValueChange={(v) => updateMaintMachineType(machine.id, v as MachineType)}>
+                              <SelectTrigger className="flex-1 h-8 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MACHINE_TYPES.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              {idx === 0 ? fmtCurrency(maintForfait.price) : fmtCurrency(maintForfait.price * 0.6)}
+                            </Badge>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeMaintMachine(machine.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {parts.length > 0 && (
+                            <div className="px-8 pb-2 text-xs text-muted-foreground/70 space-y-0.5">
+                              {parts.map((p) => (
+                                <p key={p.reference}>└ {p.quantity}x réf {p.reference} : {p.designation}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     <div className="flex items-center gap-2">
                       <Select value={maintNewType} onValueChange={(v) => setMaintNewType(v as MachineType)}>
@@ -720,12 +764,22 @@ export default function OffresPage() {
                           <p className="text-sm font-semibold text-foreground">
                             Maintenance Forfait {g.forfait} — {nb} machine{nb > 1 ? "s" : ""}
                           </p>
-                          <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                            {g.machines.map((machine, idx) => (
-                              <p key={machine.id}>
-                                • {machine.type} — {fmtCurrency(idx === 0 && nb > 1 ? g.prixBase : calc.prixUnitaire)}
-                              </p>
-                            ))}
+                          <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                            {g.machines.map((machine, idx) => {
+                              const parts = MACHINE_SPARE_PARTS[machine.type] || [];
+                              return (
+                                <div key={machine.id}>
+                                  <p>• {machine.type} — {fmtCurrency(idx === 0 && nb > 1 ? g.prixBase : calc.prixUnitaire)}</p>
+                                  {parts.length > 0 && (
+                                    <div className="ml-4 text-muted-foreground/70 space-y-0.5">
+                                      {parts.map((p) => (
+                                        <p key={p.reference}>└ {p.quantity}x {p.reference} : {p.designation} (inclus)</p>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                           {calc.remisePct > 0 && <p className="text-xs text-muted-foreground mt-1">Remise multi-machines : {calc.remisePct}%</p>}
                         </div>

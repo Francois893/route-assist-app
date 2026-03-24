@@ -704,7 +704,7 @@ export default function OffresPage() {
                         <Badge variant="outline" className="text-xs text-warning">-{m.discount}%</Badge>
                       )}
                       <span className="text-sm font-semibold w-24 text-right">
-                        {fmtCurrency(m.totalPrice * (1 - m.discount / 100))}
+                        {fmtCurrency(m.prixUnitaire * m.nbMachines * (1 - m.discount / 100))}
                       </span>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeMaintenanceItem(m.id)}>
                         <Trash2 className="h-3 w-3" />

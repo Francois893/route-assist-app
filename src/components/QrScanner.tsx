@@ -27,7 +27,16 @@ export default function QrScanner({ open, onClose, onScan }: QrScannerProps) {
       scanner
         .start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          {
+            fps: 15,
+            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+              // Use 85% of the viewfinder so small QR codes are easier to read
+              const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.85;
+              return { width: size, height: size };
+            },
+            aspectRatio: 1,
+            disableFlip: false,
+          },
           (decodedText) => {
             scanner.stop().catch(() => {});
             onScan(decodedText.trim());

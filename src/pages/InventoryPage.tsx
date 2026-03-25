@@ -234,10 +234,16 @@ export default function InventoryPage() {
             Gestion des stocks par emplacement
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Ajouter
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setScanOpen(true)} className="gap-2">
+            <ScanLine className="h-4 w-4" />
+            Scanner
+          </Button>
+          <Button onClick={() => setAddOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Ajouter
+          </Button>
+        </div>
       </div>
 
       {/* Low stock alerts */}

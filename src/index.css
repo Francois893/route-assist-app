@@ -113,3 +113,20 @@
     @apply bg-card/80 backdrop-blur-xl border border-border/40 rounded-2xl;
   }
 }
+
+/* QR Scanner - force video visibility */
+#qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  min-height: 280px;
+}
+#qr-reader img {
+  display: none;
+}
+#qr-reader__scan_region {
+  min-height: 280px !important;
+}
+#qr-reader__dashboard {
+  display: none !important;
+}

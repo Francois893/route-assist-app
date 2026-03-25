@@ -177,6 +177,17 @@ export default function InventoryPage() {
     fetchHistory(item.id);
   };
 
+  const handleQrScan = (ref: string) => {
+    setScanOpen(false);
+    const found = items.find((i) => i.reference.toLowerCase() === ref.toLowerCase());
+    if (found) {
+      openDetail(found);
+      toast.success(`Article trouvé : ${found.reference}`);
+    } else {
+      toast.error(`Aucun article avec la référence "${ref}" dans l'inventaire`);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedItem) return;
     const newQuantity = parseInt(editQty) || 0;

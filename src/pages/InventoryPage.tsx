@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import QrScanner from "@/components/QrScanner";
 
 interface InventoryItem {
   id: string;

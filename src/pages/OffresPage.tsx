@@ -426,10 +426,11 @@ export default function OffresPage() {
         const totalRemise = calc.remisePct + g.discount - (calc.remisePct * g.discount) / 100;
         const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
 
+        const forfaitRef = getForfait(g.distance).reference;
         g.machines.forEach((machine) => {
           const line1 = `Maintenance préventive ${machine.type}`;
           const line2 = `Forfait ${g.forfait}`;
-          drawRow("", line1, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true, line2);
+          drawRow(forfaitRef, line1, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true, line2);
 
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];

@@ -10,6 +10,7 @@ import {
   Save,
   Warehouse,
   User,
+  ScanLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import QrScanner from "@/components/QrScanner";
 
 interface InventoryItem {
   id: string;
@@ -59,6 +61,9 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("atelier");
   const [loading, setLoading] = useState(true);
+
+  // QR scanner
+  const [scanOpen, setScanOpen] = useState(false);
 
   // Add item dialog
   const [addOpen, setAddOpen] = useState(false);
@@ -172,6 +177,17 @@ export default function InventoryPage() {
     fetchHistory(item.id);
   };
 
+  const handleQrScan = (ref: string) => {
+    setScanOpen(false);
+    const found = items.find((i) => i.reference.toLowerCase() === ref.toLowerCase());
+    if (found) {
+      openDetail(found);
+      toast.success(`Article trouvé : ${found.reference}`);
+    } else {
+      toast.error(`Aucun article avec la référence "${ref}" dans l'inventaire`);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedItem) return;
     const newQuantity = parseInt(editQty) || 0;
@@ -218,10 +234,16 @@ export default function InventoryPage() {
             Gestion des stocks par emplacement
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Ajouter
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setScanOpen(true)} className="gap-2">
+            <ScanLine className="h-4 w-4" />
+            Scanner
+          </Button>
+          <Button onClick={() => setAddOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Ajouter
+          </Button>
+        </div>
       </div>
 
       {/* Low stock alerts */}
@@ -483,6 +505,9 @@ export default function InventoryPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* QR Scanner */}
+      <QrScanner open={scanOpen} onClose={() => setScanOpen(false)} onScan={handleQrScan} />
     </div>
   );
 }

@@ -62,6 +62,9 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState("atelier");
   const [loading, setLoading] = useState(true);
 
+  // QR scanner
+  const [scanOpen, setScanOpen] = useState(false);
+
   // Add item dialog
   const [addOpen, setAddOpen] = useState(false);
   const [newRef, setNewRef] = useState("");

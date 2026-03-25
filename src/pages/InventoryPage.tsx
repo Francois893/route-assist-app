@@ -184,7 +184,13 @@ export default function InventoryPage() {
       openDetail(found);
       toast.success(`Article trouvé : ${found.reference}`);
     } else {
-      toast.error(`Aucun article avec la référence "${ref}" dans l'inventaire`);
+      // Pré-remplir le formulaire d'ajout avec la référence scannée
+      setNewRef(ref);
+      setNewDesig("");
+      setNewQty("1");
+      setNewMinStock("0");
+      setAddOpen(true);
+      toast.info(`Référence "${ref}" non trouvée — ajoutez-la à l'inventaire`);
     }
   };
 

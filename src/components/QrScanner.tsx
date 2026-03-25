@@ -41,9 +41,6 @@ export default function QrScanner({ open, onClose, onScan }: QrScannerProps) {
               width: { ideal: 1920 },
               height: { ideal: 1080 },
             },
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true,
-            },
           },
           (decodedText) => {
             scanner.stop().catch(() => {});

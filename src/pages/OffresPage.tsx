@@ -103,10 +103,10 @@ interface ClientInfo {
   email: string | null;
 }
 
-function getForfait(distance: number): { label: "A" | "B" | "C"; price: number } {
-  if (distance < 50) return { label: "A", price: 414 };
-  if (distance <= 200) return { label: "B", price: 526 };
-  return { label: "C", price: 821.15 };
+function getForfait(distance: number): { label: "A" | "B" | "C"; price: number; reference: string } {
+  if (distance < 50) return { label: "A", price: 414, reference: "80000002" };
+  if (distance <= 200) return { label: "B", price: 526, reference: "80000003" };
+  return { label: "C", price: 821.15, reference: "80000004" };
 }
 
 function calcMaintenance(nbMachines: number, prixBase: number) {
@@ -426,10 +426,11 @@ export default function OffresPage() {
         const totalRemise = calc.remisePct + g.discount - (calc.remisePct * g.discount) / 100;
         const remiseStr = totalRemise > 0 ? `${Math.round(totalRemise)}%` : "-";
 
+        const forfaitRef = getForfait(g.distance).reference;
         g.machines.forEach((machine) => {
           const line1 = `Maintenance préventive ${machine.type}`;
           const line2 = `Forfait ${g.forfait}`;
-          drawRow("", line1, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true, line2);
+          drawRow(forfaitRef, line1, "1", fmtPrice(g.prixBase), remiseStr, fmtPrice(effectiveUnit), true, line2);
 
           // Spare parts for this machine
           const parts = MACHINE_SPARE_PARTS[machine.type] || [];

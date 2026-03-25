@@ -104,7 +104,11 @@ export default function QrScanner({ open, onClose, onScan }: QrScannerProps) {
         </DialogHeader>
 
         <div className="space-y-3">
-          <div id="qr-reader" className="w-full rounded-lg overflow-hidden bg-secondary/30 min-h-[340px]" />
+         <div
+            id="qr-reader"
+            className="w-full rounded-lg overflow-hidden bg-secondary/30"
+            style={{ minHeight: 300, height: "60vw", maxHeight: 400 }}
+          />
 
           <label className="block">
             <input

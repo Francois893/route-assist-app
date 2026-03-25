@@ -505,6 +505,9 @@ export default function InventoryPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* QR Scanner */}
+      <QrScanner open={scanOpen} onClose={() => setScanOpen(false)} onScan={handleQrScan} />
     </div>
   );
 }

@@ -177,21 +177,53 @@ export default function InventoryPage() {
     fetchHistory(item.id);
   };
 
-  const handleQrScan = (ref: string) => {
+  const normalizeReference = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+  const findItemFromScan = (rawValue: string) => {
+    const digitMatches = rawValue.match(/\d{6,}/g) ?? [];
+    const tokenMatches = rawValue.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+
+    const candidates = [rawValue, ...digitMatches, ...tokenMatches]
+      .map(normalizeReference)
+      .filter(Boolean);
+
+    const uniqueCandidates = [...new Set(candidates)];
+
+    return items.find((item) => {
+      const inventoryRef = normalizeReference(item.reference);
+      return uniqueCandidates.some(
+        (candidate) =>
+          candidate === inventoryRef ||
+          candidate.includes(inventoryRef) ||
+          inventoryRef.includes(candidate)
+      );
+    });
+  };
+
+  const handleQrScan = (rawValue: string) => {
     setScanOpen(false);
-    const found = items.find((i) => i.reference.toLowerCase() === ref.toLowerCase());
+
+    const found = findItemFromScan(rawValue);
+
     if (found) {
       openDetail(found);
       toast.success(`Article trouvé : ${found.reference}`);
-    } else {
-      // Pré-remplir le formulaire d'ajout avec la référence scannée
-      setNewRef(ref);
-      setNewDesig("");
-      setNewQty("1");
-      setNewMinStock("0");
-      setAddOpen(true);
-      toast.info(`Référence "${ref}" non trouvée — ajoutez-la à l'inventaire`);
+      return;
     }
+
+    const suggestedRef = rawValue.match(/\d{6,}/)?.[0] ?? rawValue.trim();
+
+    setNewRef(suggestedRef);
+    setNewDesig("");
+    setNewQty("1");
+    setNewMinStock("0");
+    setAddOpen(true);
+    toast.info(`Référence "${suggestedRef}" non trouvée — ajoutez-la à l'inventaire`);
   };
 
   const handleSave = async () => {

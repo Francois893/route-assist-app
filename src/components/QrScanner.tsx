@@ -35,7 +35,7 @@ export default function QrScanner({ open, onClose, onScan }: QrScannerProps) {
             },
             aspectRatio: 1,
             disableFlip: false,
-            formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+            
             videoConstraints: {
               facingMode: { ideal: "environment" },
               width: { ideal: 1920 },

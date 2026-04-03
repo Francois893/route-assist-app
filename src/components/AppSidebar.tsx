@@ -57,6 +57,7 @@ const items = [
   { title: "Offres", url: "/offres", icon: ShoppingCart },
   { title: "Inventaire", url: "/inventaire", icon: ClipboardList },
   { title: "Techniciens", url: "/techniciens", icon: BarChart3 },
+  { title: "Paramètres", url: "/parametres", icon: Settings },
 ];
 
 export function AppSidebar() {

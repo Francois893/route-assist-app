@@ -15,20 +15,6 @@ import {
   ClipboardList,
   Settings,
 } from "lucide-react";
-  LayoutDashboard,
-  Users,
-  Wrench,
-  ClipboardCheck,
-  History,
-  MapPin,
-  FileText,
-  BarChart3,
-  Cpu,
-  CalendarDays,
-  Package,
-  ShoppingCart,
-  ClipboardList,
-} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {

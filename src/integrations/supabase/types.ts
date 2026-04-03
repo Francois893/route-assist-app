@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       audits: {
         Row: {
           checklist: Json | null
@@ -337,6 +361,7 @@ export type Database = {
           created_at: string
           id: string
           install_date: string | null
+          maintenance_interval_days: number
           model: string | null
           name: string
           serial_number: string | null
@@ -348,6 +373,7 @@ export type Database = {
           created_at?: string
           id?: string
           install_date?: string | null
+          maintenance_interval_days?: number
           model?: string | null
           name: string
           serial_number?: string | null
@@ -359,6 +385,7 @@ export type Database = {
           created_at?: string
           id?: string
           install_date?: string | null
+          maintenance_interval_days?: number
           model?: string | null
           name?: string
           serial_number?: string | null

@@ -63,7 +63,7 @@ export function useMachines(clientId?: string) {
 export function useAddMachine() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (machine: Omit<DbMachine, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (machine: Omit<DbMachine, "id" | "created_at" | "updated_at" | "maintenance_interval_days"> & { maintenance_interval_days?: number }) => {
       const { data, error } = await supabase.from("machines").insert(machine).select().single();
       if (error) throw error;
       return data;

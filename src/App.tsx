@@ -20,6 +20,7 @@ import EquipmentPage from "@/pages/EquipmentPage";
 import OffresPage from "@/pages/OffresPage";
 import InventoryPage from "@/pages/InventoryPage";
 import NotFound from "@/pages/NotFound";
+import SettingsPage from "@/pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/offres" element={<OffresPage />} />
             <Route path="/inventaire" element={<InventoryPage />} />
             <Route path="/techniciens" element={<TechniciansPage />} />
+            <Route path="/parametres" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

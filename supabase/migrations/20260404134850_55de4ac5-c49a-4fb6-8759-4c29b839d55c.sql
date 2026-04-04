@@ -1,0 +1,2 @@
+ALTER TABLE public.interventions DROP CONSTRAINT interventions_type_check;
+ALTER TABLE public.interventions ADD CONSTRAINT interventions_type_check CHECK (type = ANY (ARRAY['preventive'::text, 'corrective'::text, 'audit'::text, 'installation'::text, 'assistance'::text, 'atelier'::text]));

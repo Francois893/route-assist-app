@@ -22,6 +22,7 @@ export default function ClientDetail() {
   const updateMachine = useUpdateMachine();
   const [openMachine, setOpenMachine] = useState(false);
   const [editMachine, setEditMachine] = useState<DbMachine | null>(null);
+  const [qrMachine, setQrMachine] = useState<DbMachine | null>(null);
   const [machineForm, setMachineForm] = useState({ name: '', model: '', serial_number: '', status: 'operational' as string, type: '' as string });
 
   if (lc) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;

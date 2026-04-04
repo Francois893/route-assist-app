@@ -54,12 +54,11 @@ export async function syncQueue(): Promise<{ synced: number; failed: number }> {
   for (const mutation of queue) {
     try {
       if (mutation.type === "insert") {
-        const { error } = await supabase.from(mutation.table).insert(mutation.payload as any);
+        const { error } = await (supabase.from as any)(mutation.table).insert(mutation.payload);
         if (error) throw error;
       } else if (mutation.type === "update" && mutation.rowId) {
-        const { error } = await supabase
-          .from(mutation.table)
-          .update(mutation.payload as any)
+        const { error } = await (supabase.from as any)(mutation.table)
+          .update(mutation.payload)
           .eq("id", mutation.rowId);
         if (error) throw error;
       }

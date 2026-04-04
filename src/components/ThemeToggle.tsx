@@ -2,16 +2,39 @@ import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
+function getInitialTheme() {
+  if (typeof window === "undefined") return true;
+
+  try {
+    const storedTheme = window.localStorage.getItem("theme");
+    if (storedTheme) {
+      return storedTheme !== "light";
+    }
+  } catch {
+    // localStorage may throw in sandboxed/mobile contexts.
+  }
+
+  try {
+    return !window.matchMedia("(prefers-color-scheme: light)").matches;
+  } catch {
+    return true;
+  }
+}
+
 export function ThemeToggle() {
-  const [dark, setDark] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("theme") !== "light";
-  });
+  const [dark, setDark] = useState<boolean>(getInitialTheme);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-    document.documentElement.classList.toggle("light", !dark);
-    localStorage.setItem("theme", dark ? "dark" : "light");
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.classList.toggle("light", !dark);
+    }
+
+    try {
+      window.localStorage.setItem("theme", dark ? "dark" : "light");
+    } catch {
+      // Ignore storage failures so the whole layout never crashes.
+    }
   }, [dark]);
 
   return (

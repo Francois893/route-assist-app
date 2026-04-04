@@ -11,8 +11,30 @@ import { Route, Loader2, Home, Calendar, Navigation, Clock, TrendingDown, Chevro
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
+function parseDateInput(dateStr: string) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayDate() {
+  return formatDateInput(new Date());
+}
+
 function getWeekDates(dateStr: string) {
-  const d = new Date(dateStr);
+  const d = parseDateInput(dateStr) ?? new Date();
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(d);
@@ -20,14 +42,14 @@ function getWeekDates(dateStr: string) {
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + i);
-    return date.toISOString().split("T")[0];
+    return formatDateInput(date);
   });
 }
 
 function shiftWeek(dateStr: string, weeks: number) {
-  const d = new Date(dateStr);
+  const d = parseDateInput(dateStr) ?? new Date();
   d.setDate(d.getDate() + weeks * 7);
-  return d.toISOString().split("T")[0];
+  return formatDateInput(d);
 }
 
 export default function RoutePlanning() {
@@ -35,7 +57,7 @@ export default function RoutePlanning() {
   const { data: interventions = [], isLoading } = useInterventions();
   const { data: technicians = [] } = useTechnicians();
   const [selectedTech, setSelectedTech] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [optimized, setOptimized] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
@@ -160,7 +182,9 @@ export default function RoutePlanning() {
     );
   }
 
-  const weekLabel = `${new Date(weekDates[0]).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — ${new Date(weekDates[6]).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`;
+  const weekStart = parseDateInput(weekDates[0]) ?? new Date();
+  const weekEnd = parseDateInput(weekDates[6]) ?? weekStart;
+  const weekLabel = `${weekStart.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — ${weekEnd.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`;
 
   return (
     <div className="space-y-4">
@@ -193,7 +217,7 @@ export default function RoutePlanning() {
           <input
             type="date"
             value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
+            onChange={e => setSelectedDate(e.target.value || getTodayDate())}
             className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
           />
           <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setSelectedDate(shiftWeek(selectedDate, 1))}>

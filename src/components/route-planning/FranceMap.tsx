@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -12,13 +12,13 @@ L.Icon.Default.mergeOptions({
 });
 
 const DAY_COLORS = [
-  "#e85d04", // Lun - orange
-  "#2563eb", // Mar - blue
-  "#16a34a", // Mer - green
-  "#7c3aed", // Jeu - purple
-  "#eab308", // Ven - yellow
-  "#dc2626", // Sam - red
-  "#0891b2", // Dim - teal
+  "hsl(24 95% 53%)",
+  "hsl(217 91% 60%)",
+  "hsl(142 71% 45%)",
+  "hsl(262 83% 58%)",
+  "hsl(48 96% 53%)",
+  "hsl(0 84% 60%)",
+  "hsl(188 86% 40%)",
 ];
 
 function createColorIcon(color: string, label: string) {
@@ -77,10 +77,16 @@ function FitBounds({ points }: { points: { lat: number; lng: number }[] }) {
   const fitted = useRef(false);
 
   useEffect(() => {
-    if (points.length > 0 && !fitted.current) {
-      const bounds = L.latLngBounds(points.map(p => [p.lat, p.lng]));
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
-      fitted.current = true;
+    if (points.length === 0 || fitted.current) return;
+
+    try {
+      const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+        fitted.current = true;
+      }
+    } catch {
+      // Ignore transient Leaflet lifecycle issues instead of crashing the app.
     }
   }, [points, map]);
 
@@ -95,17 +101,64 @@ interface FranceMapProps {
 }
 
 export default function FranceMap({ homePoint, mapPoints, routesByDay, showRoutes }: FranceMapProps) {
-  const allPoints = [
-    ...(homePoint ? [homePoint] : []),
-    ...mapPoints.map(p => ({ lat: p.lat, lng: p.lng })),
-  ];
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const safeHomePoint = useMemo(() => {
+    if (!homePoint) return null;
+    return Number.isFinite(homePoint.lat) && Number.isFinite(homePoint.lng) ? homePoint : null;
+  }, [homePoint]);
+
+  const safeMapPoints = useMemo(
+    () => mapPoints.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng)),
+    [mapPoints],
+  );
+
+  const safeRoutesByDay = useMemo(
+    () =>
+      routesByDay
+        .map((route) => ({
+          ...route,
+          points: route.points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng)),
+        }))
+        .filter((route) => route.points.length > 1),
+    [routesByDay],
+  );
+
+  const allPoints = useMemo(
+    () => [
+      ...(safeHomePoint ? [safeHomePoint] : []),
+      ...safeMapPoints.map((point) => ({ lat: point.lat, lng: point.lng })),
+    ],
+    [safeHomePoint, safeMapPoints],
+  );
 
   const center: [number, number] = allPoints.length > 0
     ? [allPoints.reduce((s, p) => s + p.lat, 0) / allPoints.length, allPoints.reduce((s, p) => s + p.lng, 0) / allPoints.length]
-    : [46.6, 2.3]; // Centre de la France
+    : [46.603354, 1.888334];
+
+  const mapKey = useMemo(
+    () =>
+      `france-map-${allPoints
+        .map((point) => `${point.lat.toFixed(4)}:${point.lng.toFixed(4)}`)
+        .join("|") || "empty"}-${showRoutes ? "routes" : "markers"}`,
+    [allPoints, showRoutes],
+  );
+
+  if (!isMounted) {
+    return (
+      <div className="flex h-full min-h-[420px] items-center justify-center bg-muted/30 text-sm text-muted-foreground">
+        Chargement de la carte…
+      </div>
+    );
+  }
 
   return (
     <MapContainer
+      key={mapKey}
       center={center}
       zoom={6}
       className="w-full h-full rounded-2xl"
@@ -118,17 +171,17 @@ export default function FranceMap({ homePoint, mapPoints, routesByDay, showRoute
       />
       <FitBounds points={allPoints} />
 
-      {homePoint && (
-        <Marker position={[homePoint.lat, homePoint.lng]} icon={createHomeIcon()}>
+      {safeHomePoint && (
+        <Marker position={[safeHomePoint.lat, safeHomePoint.lng]} icon={createHomeIcon()}>
           <Popup><strong>🏠 Domicile technicien</strong></Popup>
         </Marker>
       )}
 
-      {mapPoints.map((pt, idx) => (
+      {safeMapPoints.map((pt, idx) => (
         <Marker
           key={idx}
           position={[pt.lat, pt.lng]}
-          icon={createColorIcon(DAY_COLORS[pt.dayIndex], String(pt.orderInDay + 1))}
+          icon={createColorIcon(DAY_COLORS[pt.dayIndex] ?? DAY_COLORS[0], String(pt.orderInDay + 1))}
         >
           <Popup>
             <div className="text-sm">
@@ -146,12 +199,12 @@ export default function FranceMap({ homePoint, mapPoints, routesByDay, showRoute
         </Marker>
       ))}
 
-      {showRoutes && routesByDay.map((route) => (
+      {showRoutes && safeRoutesByDay.map((route) => (
         <Polyline
           key={route.dayIndex}
           positions={route.points.map(p => [p.lat, p.lng] as [number, number])}
           pathOptions={{
-            color: DAY_COLORS[route.dayIndex],
+            color: DAY_COLORS[route.dayIndex] ?? DAY_COLORS[0],
             weight: 3,
             opacity: 0.8,
             dashArray: "8,6",

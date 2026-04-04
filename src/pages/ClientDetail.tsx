@@ -133,6 +133,9 @@ export default function ClientDetail() {
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={machine.status} />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setQrMachine(machine)} title="QR Code">
+                    <QrCode className="w-3 h-3" />
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(machine)}>
                     <Pencil className="w-3 h-3" />
                   </Button>

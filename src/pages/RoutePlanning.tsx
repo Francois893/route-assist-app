@@ -285,20 +285,14 @@ export default function RoutePlanning() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Map - larger */}
         <Card className="lg:col-span-3 p-0 overflow-hidden rounded-2xl">
-          <Suspense fallback={
-            <div className="h-[450px] flex items-center justify-center bg-muted/30">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          }>
-            <div className="h-[450px] lg:h-[550px]">
-              <FranceMap
-                homePoint={homePoint}
-                mapPoints={mapPoints}
-                routesByDay={routesByDay}
-                showRoutes={optimized}
-              />
-            </div>
-          </Suspense>
+          <div className="h-[450px] lg:h-[550px]">
+            <FranceMap
+              homePoint={homePoint}
+              mapPoints={mapPoints}
+              routesByDay={routesByDay}
+              showRoutes={optimized}
+            />
+          </div>
         </Card>
 
         {/* Itinerary */}

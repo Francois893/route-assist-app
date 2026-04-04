@@ -28,7 +28,7 @@ export default function ClientDetail() {
 
   const openAdd = () => {
     setEditMachine(null);
-    setMachineForm({ name: '', model: '', serial_number: '', status: 'operational' });
+    setMachineForm({ name: '', model: '', serial_number: '', status: 'operational', type: '' });
     setOpenMachine(true);
   };
 

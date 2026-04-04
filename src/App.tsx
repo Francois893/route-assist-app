@@ -1,11 +1,14 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createIDBPersister } from "@/lib/idb-persister";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth, useProfile } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
+import { NetworkStatusBar } from "@/components/NetworkStatusBar";
 import Layout from "@/components/Layout";
 import AuthPage from "@/pages/AuthPage";
 import ProfileSetupPage from "@/pages/ProfileSetupPage";
@@ -27,7 +30,21 @@ import InventoryPage from "@/pages/InventoryPage";
 import NotFound from "@/pages/NotFound";
 import SettingsPage from "@/pages/SettingsPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24, // 24h – keep cache for offline
+      staleTime: 1000 * 60 * 5, // 5min
+      retry: (failureCount, error) => {
+        // Don't retry when offline
+        if (!navigator.onLine) return false;
+        return failureCount < 2;
+      },
+    },
+  },
+});
+
+const persister = createIDBPersister();
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -45,9 +62,9 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
       return (
         <div className="min-h-screen flex items-center justify-center bg-background px-4">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
-            <h1 className="text-lg font-semibold text-foreground">Un problème d’affichage est survenu</h1>
+            <h1 className="text-lg font-semibold text-foreground">Un problème d'affichage est survenu</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Retournez à l’accueil ou rechargez la page pour continuer.
+              Retournez à l'accueil ou rechargez la page pour continuer.
             </p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <button
@@ -121,15 +138,16 @@ function AuthGate() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 }}>
     <AppErrorBoundary>
       <TooltipProvider>
+        <NetworkStatusBar />
         <Toaster />
         <Sonner />
         <AuthGate />
       </TooltipProvider>
     </AppErrorBoundary>
-  </QueryClientProvider>
+  </PersistQueryClientProvider>
 );
 
 export default App;

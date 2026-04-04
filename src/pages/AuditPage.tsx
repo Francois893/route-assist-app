@@ -319,6 +319,10 @@ export default function AuditPage() {
                 <Input value={newMachineName} onChange={e => setNewMachineName(e.target.value)} placeholder="Ex: Hotmelt H200" className="h-9" />
               </div>
               <div>
+                <Label className="text-xs">Modèle</Label>
+                <Input value={newMachineModel} onChange={e => setNewMachineModel(e.target.value)} placeholder="Ex: ProMelt XT" className="h-9" />
+              </div>
+              <div>
                 <Label className="text-xs">N° de série</Label>
                 <Input value={newMachineSerial} onChange={e => setNewMachineSerial(e.target.value)} placeholder="Ex: SN-12345" className="h-9" />
               </div>

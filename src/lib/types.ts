@@ -51,11 +51,17 @@ export interface AuditForm {
   checklistItems: AuditChecklistItem[];
 }
 
+export type AuditItemStatus = 'ok' | 'attention' | 'danger' | 'non-verifie';
+
 export interface AuditChecklistItem {
   id: string;
   label: string;
   checked: boolean;
+  status: AuditItemStatus;
   comment: string;
+  category: string;
+  /** If set, only show for this machine type */
+  machineType?: 'piston' | 'engrenage';
 }
 
 export interface Devis {

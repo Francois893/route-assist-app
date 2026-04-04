@@ -38,15 +38,62 @@ export const devis: Devis[] = [
   { id: 'd5', interventionId: 'i5', clientId: 'c4', numeroOffre: 'OFF-2025-005', montant: 650, status: 'refuse', dateCreation: '2025-03-14', description: 'Vente additionnelle - kit lubrification' },
 ];
 
+const item = (id: string, label: string, category: string, machineType?: 'piston' | 'engrenage') => ({
+  id, label, checked: false, status: 'non-verifie' as const, comment: '', category, machineType,
+});
+
 export const defaultAuditChecklist = [
-  { id: 'ac1', label: 'Vérification des dispositifs de sécurité', checked: false, comment: '' },
-  { id: 'ac2', label: 'Contrôle des niveaux de fluide', checked: false, comment: '' },
-  { id: 'ac3', label: 'Inspection des câbles et connecteurs', checked: false, comment: '' },
-  { id: 'ac4', label: 'Test des alarmes et arrêts d\'urgence', checked: false, comment: '' },
-  { id: 'ac5', label: 'Vérification de l\'alignement', checked: false, comment: '' },
-  { id: 'ac6', label: 'Contrôle des vibrations', checked: false, comment: '' },
-  { id: 'ac7', label: 'Inspection visuelle de l\'usure', checked: false, comment: '' },
-  { id: 'ac8', label: 'Test de performance', checked: false, comment: '' },
-  { id: 'ac9', label: 'Vérification de la mise à la terre', checked: false, comment: '' },
-  { id: 'ac10', label: 'Contrôle de la température de fonctionnement', checked: false, comment: '' },
+  // VUE ENSEMBLE
+  item('ve1', 'Carter', 'Vue ensemble'),
+  item('ve2', 'Feeder', 'Vue ensemble'),
+  // SYSTÈME PISTON
+  item('sp1', 'Filtre', 'Système Piston', 'piston'),
+  item('sp2', 'Vérin', 'Système Piston', 'piston'),
+  item('sp3', 'Electrovanne', 'Système Piston', 'piston'),
+  item('sp4', 'Vanne dépressurisation', 'Système Piston', 'piston'),
+  item('sp5', 'Valve', 'Système Piston', 'piston'),
+  item('sp6', 'Raccord', 'Système Piston', 'piston'),
+  item('sp7', 'Détendeur / Mano', 'Système Piston', 'piston'),
+  item('sp8', 'Axe de pompe', 'Système Piston', 'piston'),
+  item('sp9', 'Isolant', 'Système Piston', 'piston'),
+  item('sp10', 'Distributeur', 'Système Piston', 'piston'),
+  item('sp11', 'Joint cuve', 'Système Piston', 'piston'),
+  // SYSTÈME ENGRENAGE
+  item('se1', 'Filtre', 'Système Engrenage', 'engrenage'),
+  item('se2', 'Accouplement', 'Système Engrenage', 'engrenage'),
+  item('se3', 'Fuite / Pompe', 'Système Engrenage', 'engrenage'),
+  item('se4', 'By pass', 'Système Engrenage', 'engrenage'),
+  item('se5', 'Vérin NS', 'Système Engrenage', 'engrenage'),
+  item('se6', 'Isolant', 'Système Engrenage', 'engrenage'),
+  item('se7', 'Distributeur', 'Système Engrenage', 'engrenage'),
+  item('se8', 'Joint cuve', 'Système Engrenage', 'engrenage'),
+  // ELECTRIQUE
+  item('el1', 'Connection électrique', 'Électrique'),
+  item('el2', 'Sortie électrique', 'Électrique'),
+  item('el3', 'Capteur', 'Électrique'),
+  item('el4', 'Bobine', 'Électrique'),
+  item('el5', 'Balise', 'Électrique'),
+  // APPLICATEUR
+  item('ap1', 'Fonctionnement', 'Applicateur'),
+  item('ap2', 'Fixation', 'Applicateur'),
+  item('ap3', 'Fuite', 'Applicateur'),
+  item('ap4', 'Connection / Bornier / Connecteur', 'Applicateur'),
+  item('ap5', 'Electrovanne', 'Applicateur'),
+  item('ap6', 'Sonde / Résistance', 'Applicateur'),
+  item('ap7', 'Module', 'Applicateur'),
+  item('ap8', 'Raccord air', 'Applicateur'),
+  item('ap9', 'Buse', 'Applicateur'),
+  // TUYAUX
+  item('tu1', 'Fonctionnement', 'Tuyaux'),
+  item('tu2', 'Fuite', 'Tuyaux'),
+  item('tu3', 'Connection', 'Tuyaux'),
+  item('tu4', 'Revêtement', 'Tuyaux'),
+  // PISTOLET
+  item('pi1', 'Fonctionnement', 'Pistolet'),
+  item('pi2', 'Sonde / Résistance', 'Pistolet'),
+  item('pi3', 'Connection / Bornier', 'Pistolet'),
+  item('pi4', 'Fuite / Colle', 'Pistolet'),
+  item('pi5', 'Carcasse', 'Pistolet'),
+  item('pi6', 'Sécurité', 'Pistolet'),
+  item('pi7', 'Buse', 'Pistolet'),
 ];

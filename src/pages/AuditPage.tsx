@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useClients, useMachines, useInterventions, useTechnicians, useAddAudit, useAddMachine } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { defaultAuditChecklist } from "@/lib/mock-data";
 import { Camera, CheckCircle, X, Loader2, Wrench, ChevronDown, Plus } from "lucide-react";
-import type { AuditChecklistItem } from "@/lib/types";
+import type { AuditChecklistItem, AuditItemStatus } from "@/lib/types";
 import { toast } from "sonner";
 
 interface MachineAuditState {
@@ -32,6 +32,25 @@ const createDefaultMachineState = (): MachineAuditState => ({
   observations: "",
 });
 
+const STATUS_COLORS: Record<AuditItemStatus, { bg: string; border: string; label: string }> = {
+  'ok': { bg: 'bg-green-500', border: 'border-green-500', label: 'OK' },
+  'attention': { bg: 'bg-yellow-500', border: 'border-yellow-500', label: 'Attention' },
+  'danger': { bg: 'bg-red-500', border: 'border-red-500', label: 'Danger' },
+  'non-verifie': { bg: 'bg-muted', border: 'border-muted-foreground/30', label: '—' },
+};
+
+function StatusButton({ status, active, onClick }: { status: AuditItemStatus; active: boolean; onClick: () => void }) {
+  const s = STATUS_COLORS[status];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-7 h-7 rounded-md border-2 transition-all ${s.bg} ${active ? 'ring-2 ring-offset-1 ring-foreground scale-110' : 'opacity-40 hover:opacity-70'}`}
+      title={s.label}
+    />
+  );
+}
+
 export default function AuditPage() {
   const { data: clients = [] } = useClients();
   const { data: machines = [] } = useMachines();
@@ -48,7 +67,6 @@ export default function AuditPage() {
   const [openMachines, setOpenMachines] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // New machine form state
   const [showNewMachineForm, setShowNewMachineForm] = useState(false);
   const [newMachineName, setNewMachineName] = useState("");
   const [newMachineType, setNewMachineType] = useState<string>("piston");
@@ -61,7 +79,7 @@ export default function AuditPage() {
     }));
   };
 
-  const toggleMachineCheck = (machineId: string, checkId: string) => {
+  const setItemStatus = (machineId: string, checkId: string, status: AuditItemStatus) => {
     setMachineStates(prev => {
       const state = prev[machineId] || createDefaultMachineState();
       return {
@@ -69,7 +87,7 @@ export default function AuditPage() {
         [machineId]: {
           ...state,
           checklist: state.checklist.map(item =>
-            item.id === checkId ? { ...item, checked: !item.checked } : item
+            item.id === checkId ? { ...item, status, checked: status !== 'non-verifie' } : item
           ),
         },
       };
@@ -149,11 +167,9 @@ export default function AuditPage() {
       type: newMachineType,
     }, {
       onSuccess: (data) => {
-        // Auto-select and open the new machine for audit
         setSelectedMachineIds(prev => [...prev, data.id]);
         setMachineStates(s => ({ ...s, [data.id]: createDefaultMachineState() }));
         setOpenMachines(o => ({ ...o, [data.id]: true }));
-        // Reset form
         setNewMachineName("");
         setNewMachineSerial("");
         setNewMachineType("piston");
@@ -165,14 +181,13 @@ export default function AuditPage() {
 
   const handleSubmit = () => {
     if (!selectedIntervention) return;
-
-    // Build per-machine checklist data
     const machineAudits = selectedMachineIds.map(mid => {
       const state = machineStates[mid] || createDefaultMachineState();
       const machine = machines.find(m => m.id === mid);
       return {
         machine_id: mid,
         machine_name: machine?.name || "",
+        machine_type: machine?.type || "",
         etat_general: state.etatGeneral,
         securite: state.securite,
         proprete: state.proprete,
@@ -209,6 +224,35 @@ export default function AuditPage() {
   };
 
   const getMachineState = (mid: string) => machineStates[mid] || createDefaultMachineState();
+
+  /** Get filtered checklist items for a machine based on its type */
+  const getFilteredChecklist = (machineId: string) => {
+    const state = getMachineState(machineId);
+    const machine = machines.find(m => m.id === machineId);
+    const machineType = machine?.type as 'piston' | 'engrenage' | undefined;
+
+    return state.checklist.filter(item => {
+      if (!item.machineType) return true; // universal items
+      if (item.machineType === machineType) return true;
+      return false;
+    });
+  };
+
+  /** Group checklist items by category */
+  const groupByCategory = (items: AuditChecklistItem[]) => {
+    const groups: { category: string; items: AuditChecklistItem[] }[] = [];
+    items.forEach(item => {
+      const last = groups[groups.length - 1];
+      if (last && last.category === item.category) {
+        last.items.push(item);
+      } else {
+        groups.push({ category: item.category, items: [item] });
+      }
+    });
+    return groups;
+  };
+
+  const SECTION_ACCESSORIES_CATEGORIES = ['Applicateur', 'Tuyaux', 'Pistolet'];
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -250,25 +294,17 @@ export default function AuditPage() {
             <Wrench className="w-4 h-4 text-primary" />
             Machines auditées ({selectedMachineIds.length})
           </h2>
-
-          {/* Existing machines */}
           {clientMachines.length > 0 && (
             <div className="space-y-1.5 mb-3">
               {clientMachines.map(m => (
                 <label key={m.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/30 cursor-pointer text-sm">
-                  <Checkbox
-                    checked={selectedMachineIds.includes(m.id)}
-                    onCheckedChange={() => toggleMachine(m.id)}
-                  />
+                  <Checkbox checked={selectedMachineIds.includes(m.id)} onCheckedChange={() => toggleMachine(m.id)} />
                   <span>{m.name}</span>
                   {m.type && <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{m.type}</span>}
-                  {m.model && <span className="text-xs text-muted-foreground">({m.model})</span>}
                 </label>
               ))}
             </div>
           )}
-
-          {/* Add new machine inline */}
           {!showNewMachineForm ? (
             <Button variant="outline" size="sm" onClick={() => setShowNewMachineForm(true)} className="w-full border-dashed">
               <Plus className="w-4 h-4 mr-1" /> Ajouter une machine découverte
@@ -278,21 +314,11 @@ export default function AuditPage() {
               <h3 className="text-sm font-medium">Nouvelle machine</h3>
               <div>
                 <Label className="text-xs">Nom de la machine *</Label>
-                <Input
-                  value={newMachineName}
-                  onChange={e => setNewMachineName(e.target.value)}
-                  placeholder="Ex: Hotmelt H200"
-                  className="h-9"
-                />
+                <Input value={newMachineName} onChange={e => setNewMachineName(e.target.value)} placeholder="Ex: Hotmelt H200" className="h-9" />
               </div>
               <div>
                 <Label className="text-xs">N° de série</Label>
-                <Input
-                  value={newMachineSerial}
-                  onChange={e => setNewMachineSerial(e.target.value)}
-                  placeholder="Ex: SN-12345"
-                  className="h-9"
-                />
+                <Input value={newMachineSerial} onChange={e => setNewMachineSerial(e.target.value)} placeholder="Ex: SN-12345" className="h-9" />
               </div>
               <div>
                 <Label className="text-xs mb-2 block">Type de machine *</Label>
@@ -325,6 +351,8 @@ export default function AuditPage() {
         if (!machine) return null;
         const state = getMachineState(mid);
         const isOpen = openMachines[mid] !== false;
+        const filteredChecklist = getFilteredChecklist(mid);
+        const grouped = groupByCategory(filteredChecklist);
 
         return (
           <Collapsible key={mid} open={isOpen} onOpenChange={v => setOpenMachines(o => ({ ...o, [mid]: v }))}>
@@ -335,12 +363,12 @@ export default function AuditPage() {
                     <Wrench className="w-4 h-4 text-primary" />
                     {machine.name}
                     {machine.type && <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{machine.type}</span>}
-                    {machine.model && <span className="text-xs text-muted-foreground font-normal">({machine.model})</span>}
                   </h2>
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4 space-y-4">
+                {/* État général selectors */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>État général</Label>
@@ -387,19 +415,45 @@ export default function AuditPage() {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Checklist de vérification</h3>
-                  <div className="space-y-2">
-                    {state.checklist.map(item => (
-                      <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                        <Checkbox checked={item.checked} onCheckedChange={() => toggleMachineCheck(mid, item.id)} className="mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <label className="text-sm font-medium cursor-pointer" onClick={() => toggleMachineCheck(mid, item.id)}>{item.label}</label>
-                          <Input placeholder="Commentaire..." className="mt-1 h-8 text-xs" value={item.comment} onChange={e => updateMachineCheckComment(mid, item.id, e.target.value)} />
+                {/* Checklist grouped by category */}
+                <div className="space-y-4">
+                  {grouped.map((group, gi) => {
+                    const isAccessory = SECTION_ACCESSORIES_CATEGORIES.includes(group.category);
+                    const isFirstAccessory = isAccessory && (gi === 0 || !SECTION_ACCESSORIES_CATEGORIES.includes(grouped[gi - 1].category));
+
+                    return (
+                      <div key={group.category}>
+                        {isFirstAccessory && (
+                          <div className="text-center text-xs font-bold uppercase tracking-wider text-muted-foreground bg-muted/50 rounded py-1.5 mb-3">
+                            Accessoires
+                          </div>
+                        )}
+                        <div className="mb-1">
+                          <h3 className="text-sm font-semibold text-foreground bg-muted/30 px-3 py-1.5 rounded-t-lg border-b border-border">
+                            {group.category}
+                          </h3>
+                          <div className="border border-t-0 rounded-b-lg divide-y divide-border">
+                            {group.items.map(item => (
+                              <div key={item.id} className="flex items-center gap-2 px-3 py-2">
+                                <span className="text-sm flex-1 min-w-0">{item.label}</span>
+                                <div className="flex gap-1.5 shrink-0">
+                                  <StatusButton status="ok" active={item.status === 'ok'} onClick={() => setItemStatus(mid, item.id, 'ok')} />
+                                  <StatusButton status="attention" active={item.status === 'attention'} onClick={() => setItemStatus(mid, item.id, 'attention')} />
+                                  <StatusButton status="danger" active={item.status === 'danger'} onClick={() => setItemStatus(mid, item.id, 'danger')} />
+                                </div>
+                                <Input
+                                  placeholder="Commentaire"
+                                  className="h-7 text-xs w-28 sm:w-40 shrink-0"
+                                  value={item.comment}
+                                  onChange={e => updateMachineCheckComment(mid, item.id, e.target.value)}
+                                />
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
 
                 <div>

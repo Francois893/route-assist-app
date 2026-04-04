@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useClients, useMachines, useInterventions, useTechnicians, useAddAudit } from "@/hooks/use-data";
+import { useClients, useMachines, useInterventions, useTechnicians, useAddAudit, useAddMachine } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { defaultAuditChecklist } from "@/lib/mock-data";
-import { Camera, CheckCircle, X, Loader2, Wrench, ChevronDown } from "lucide-react";
+import { Camera, CheckCircle, X, Loader2, Wrench, ChevronDown, Plus } from "lucide-react";
 import type { AuditChecklistItem } from "@/lib/types";
+import { toast } from "sonner";
 
 interface MachineAuditState {
   etatGeneral: string;
@@ -36,6 +38,7 @@ export default function AuditPage() {
   const { data: interventions = [] } = useInterventions();
   const { data: technicians = [] } = useTechnicians();
   const addAudit = useAddAudit();
+  const addMachine = useAddMachine();
   const [selectedIntervention, setSelectedIntervention] = useState("");
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
   const [machineStates, setMachineStates] = useState<Record<string, MachineAuditState>>({});
@@ -44,6 +47,12 @@ export default function AuditPage() {
   const [submitted, setSubmitted] = useState(false);
   const [openMachines, setOpenMachines] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // New machine form state
+  const [showNewMachineForm, setShowNewMachineForm] = useState(false);
+  const [newMachineName, setNewMachineName] = useState("");
+  const [newMachineType, setNewMachineType] = useState<string>("piston");
+  const [newMachineSerial, setNewMachineSerial] = useState("");
 
   const updateMachineState = (machineId: string, update: Partial<MachineAuditState>) => {
     setMachineStates(prev => ({
@@ -125,6 +134,32 @@ export default function AuditPage() {
         setOpenMachines(o => ({ ...o, [machineId]: true }));
       }
       return next;
+    });
+  };
+
+  const handleAddNewMachine = () => {
+    if (!newMachineName.trim() || !inter) return;
+    addMachine.mutate({
+      client_id: inter.client_id,
+      name: newMachineName.trim(),
+      model: "",
+      serial_number: newMachineSerial.trim(),
+      install_date: new Date().toISOString().split('T')[0],
+      status: "operational",
+      type: newMachineType,
+    }, {
+      onSuccess: (data) => {
+        // Auto-select and open the new machine for audit
+        setSelectedMachineIds(prev => [...prev, data.id]);
+        setMachineStates(s => ({ ...s, [data.id]: createDefaultMachineState() }));
+        setOpenMachines(o => ({ ...o, [data.id]: true }));
+        // Reset form
+        setNewMachineName("");
+        setNewMachineSerial("");
+        setNewMachineType("piston");
+        setShowNewMachineForm(false);
+        toast.success(`Machine "${data.name}" ajoutée au client et à l'audit`);
+      },
     });
   };
 
@@ -215,10 +250,10 @@ export default function AuditPage() {
             <Wrench className="w-4 h-4 text-primary" />
             Machines auditées ({selectedMachineIds.length})
           </h2>
-          {clientMachines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune machine pour ce client</p>
-          ) : (
-            <div className="space-y-1.5">
+
+          {/* Existing machines */}
+          {clientMachines.length > 0 && (
+            <div className="space-y-1.5 mb-3">
               {clientMachines.map(m => (
                 <label key={m.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/30 cursor-pointer text-sm">
                   <Checkbox
@@ -226,9 +261,59 @@ export default function AuditPage() {
                     onCheckedChange={() => toggleMachine(m.id)}
                   />
                   <span>{m.name}</span>
+                  {m.type && <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{m.type}</span>}
                   {m.model && <span className="text-xs text-muted-foreground">({m.model})</span>}
                 </label>
               ))}
+            </div>
+          )}
+
+          {/* Add new machine inline */}
+          {!showNewMachineForm ? (
+            <Button variant="outline" size="sm" onClick={() => setShowNewMachineForm(true)} className="w-full border-dashed">
+              <Plus className="w-4 h-4 mr-1" /> Ajouter une machine découverte
+            </Button>
+          ) : (
+            <div className="border border-dashed border-primary/30 rounded-lg p-4 space-y-3 bg-muted/20">
+              <h3 className="text-sm font-medium">Nouvelle machine</h3>
+              <div>
+                <Label className="text-xs">Nom de la machine *</Label>
+                <Input
+                  value={newMachineName}
+                  onChange={e => setNewMachineName(e.target.value)}
+                  placeholder="Ex: Hotmelt H200"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">N° de série</Label>
+                <Input
+                  value={newMachineSerial}
+                  onChange={e => setNewMachineSerial(e.target.value)}
+                  placeholder="Ex: SN-12345"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-2 block">Type de machine *</Label>
+                <RadioGroup value={newMachineType} onValueChange={setNewMachineType} className="flex gap-4">
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="piston" id="type-piston" />
+                    <Label htmlFor="type-piston" className="text-sm cursor-pointer">Piston</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="engrenage" id="type-engrenage" />
+                    <Label htmlFor="type-engrenage" className="text-sm cursor-pointer">Engrenage</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleAddNewMachine} disabled={!newMachineName.trim() || addMachine.isPending}>
+                  {addMachine.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Plus className="w-3 h-3 mr-1" />}
+                  Ajouter
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowNewMachineForm(false)}>Annuler</Button>
+              </div>
             </div>
           )}
         </Card>
@@ -249,13 +334,13 @@ export default function AuditPage() {
                   <h2 className="font-semibold flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-primary" />
                     {machine.name}
+                    {machine.type && <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{machine.type}</span>}
                     {machine.model && <span className="text-xs text-muted-foreground font-normal">({machine.model})</span>}
                   </h2>
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4 space-y-4">
-                {/* État */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>État général</Label>
@@ -302,7 +387,6 @@ export default function AuditPage() {
                   </div>
                 </div>
 
-                {/* Checklist */}
                 <div>
                   <h3 className="text-sm font-medium mb-2">Checklist de vérification</h3>
                   <div className="space-y-2">
@@ -318,7 +402,6 @@ export default function AuditPage() {
                   </div>
                 </div>
 
-                {/* Observations per machine */}
                 <div>
                   <Label>Observations</Label>
                   <Textarea value={state.observations} onChange={e => updateMachineState(mid, { observations: e.target.value })} rows={2} placeholder="Observations spécifiques à cette machine..." />

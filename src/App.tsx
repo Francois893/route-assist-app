@@ -29,6 +29,7 @@ import OffresPage from "@/pages/OffresPage";
 import InventoryPage from "@/pages/InventoryPage";
 import NotFound from "@/pages/NotFound";
 import SettingsPage from "@/pages/SettingsPage";
+import PublicMachinePage from "@/pages/PublicMachinePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {

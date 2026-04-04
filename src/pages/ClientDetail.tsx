@@ -126,7 +126,7 @@ export default function ClientDetail() {
                   <Cpu className="w-5 h-5 text-primary" />
                   <div>
                     <h3 className="font-semibold text-sm">{machine.name}</h3>
-                    <p className="text-xs text-muted-foreground">{machine.model} · {machine.serial_number}</p>
+                    <p className="text-xs text-muted-foreground">{machine.model} · {machine.serial_number}{machine.type ? ` · ${machine.type.charAt(0).toUpperCase() + machine.type.slice(1)}` : ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

@@ -194,6 +194,16 @@ export default function ClientDetail() {
           </table>
         </div>
       </Card>
+
+      {qrMachine && (
+        <MachineQrCode
+          open={!!qrMachine}
+          onClose={() => setQrMachine(null)}
+          machineId={qrMachine.id}
+          machineName={qrMachine.name}
+          serialNumber={qrMachine.serial_number}
+        />
+      )}
     </div>
   );
 }

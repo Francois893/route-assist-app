@@ -114,6 +114,8 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          modified_by: string | null
+          modified_by_name: string | null
           name: string
           phone: string | null
           updated_at: string
@@ -127,6 +129,8 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          modified_by?: string | null
+          modified_by_name?: string | null
           name: string
           phone?: string | null
           updated_at?: string
@@ -140,6 +144,8 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          modified_by?: string | null
+          modified_by_name?: string | null
           name?: string
           phone?: string | null
           updated_at?: string
@@ -210,6 +216,8 @@ export type Database = {
           id: string
           machine_id: string | null
           machine_ids: string[] | null
+          modified_by: string | null
+          modified_by_name: string | null
           notes: string | null
           photos: string[] | null
           status: string
@@ -227,6 +235,8 @@ export type Database = {
           id?: string
           machine_id?: string | null
           machine_ids?: string[] | null
+          modified_by?: string | null
+          modified_by_name?: string | null
           notes?: string | null
           photos?: string[] | null
           status?: string
@@ -244,6 +254,8 @@ export type Database = {
           id?: string
           machine_id?: string | null
           machine_ids?: string[] | null
+          modified_by?: string | null
+          modified_by_name?: string | null
           notes?: string | null
           photos?: string[] | null
           status?: string
@@ -363,6 +375,8 @@ export type Database = {
           install_date: string | null
           maintenance_interval_days: number
           model: string | null
+          modified_by: string | null
+          modified_by_name: string | null
           name: string
           serial_number: string | null
           status: string
@@ -376,6 +390,8 @@ export type Database = {
           install_date?: string | null
           maintenance_interval_days?: number
           model?: string | null
+          modified_by?: string | null
+          modified_by_name?: string | null
           name: string
           serial_number?: string | null
           status?: string
@@ -389,6 +405,8 @@ export type Database = {
           install_date?: string | null
           maintenance_interval_days?: number
           model?: string | null
+          modified_by?: string | null
+          modified_by_name?: string | null
           name?: string
           serial_number?: string | null
           status?: string
@@ -404,6 +422,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          poste: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name?: string
+          poste?: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          poste?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       technicians: {
         Row: {

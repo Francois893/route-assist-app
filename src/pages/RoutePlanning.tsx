@@ -1,14 +1,13 @@
-import { useState, useMemo, Suspense, lazy } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useClients, useInterventions, useTechnicians } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WeekDayBar from "@/components/route-planning/WeekDayBar";
 import DayItinerary from "@/components/route-planning/DayItinerary";
+import FranceMap from "@/components/route-planning/FranceMap";
 import { optimizeOrder, calculateTravelTimes } from "@/lib/route-optimizer";
 import { Route, Loader2, Home, Calendar, Navigation, Clock, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
-
-const FranceMap = lazy(() => import("@/components/route-planning/FranceMap"));
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 

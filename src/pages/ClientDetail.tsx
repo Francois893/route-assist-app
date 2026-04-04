@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Cpu, Phone, Mail, MapPin, User, Pencil, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Cpu, Phone, Mail, MapPin, User, Pencil, Loader2, QrCode } from "lucide-react";
 import { useState } from "react";
 import type { DbMachine } from "@/hooks/use-data";
+import MachineQrCode from "@/components/MachineQrCode";
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();

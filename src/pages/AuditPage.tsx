@@ -173,6 +173,7 @@ export default function AuditPage() {
         setOpenMachines(o => ({ ...o, [data.id]: true }));
         setNewMachineName("");
         setNewMachineSerial("");
+        setNewMachineModel("");
         setNewMachineType("piston");
         setShowNewMachineForm(false);
         toast.success(`Machine "${data.name}" ajoutée au client et à l'audit`);

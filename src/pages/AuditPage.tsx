@@ -71,6 +71,7 @@ export default function AuditPage() {
   const [newMachineName, setNewMachineName] = useState("");
   const [newMachineType, setNewMachineType] = useState<string>("piston");
   const [newMachineSerial, setNewMachineSerial] = useState("");
+  const [newMachineModel, setNewMachineModel] = useState("");
 
   const updateMachineState = (machineId: string, update: Partial<MachineAuditState>) => {
     setMachineStates(prev => ({
@@ -160,7 +161,7 @@ export default function AuditPage() {
     addMachine.mutate({
       client_id: inter.client_id,
       name: newMachineName.trim(),
-      model: "",
+      model: newMachineModel.trim(),
       serial_number: newMachineSerial.trim(),
       install_date: new Date().toISOString().split('T')[0],
       status: "operational",
@@ -172,6 +173,7 @@ export default function AuditPage() {
         setOpenMachines(o => ({ ...o, [data.id]: true }));
         setNewMachineName("");
         setNewMachineSerial("");
+        setNewMachineModel("");
         setNewMachineType("piston");
         setShowNewMachineForm(false);
         toast.success(`Machine "${data.name}" ajoutée au client et à l'audit`);
@@ -315,6 +317,10 @@ export default function AuditPage() {
               <div>
                 <Label className="text-xs">Nom de la machine *</Label>
                 <Input value={newMachineName} onChange={e => setNewMachineName(e.target.value)} placeholder="Ex: Hotmelt H200" className="h-9" />
+              </div>
+              <div>
+                <Label className="text-xs">Modèle</Label>
+                <Input value={newMachineModel} onChange={e => setNewMachineModel(e.target.value)} placeholder="Ex: ProMelt XT" className="h-9" />
               </div>
               <div>
                 <Label className="text-xs">N° de série</Label>

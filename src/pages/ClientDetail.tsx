@@ -21,27 +21,27 @@ export default function ClientDetail() {
   const updateMachine = useUpdateMachine();
   const [openMachine, setOpenMachine] = useState(false);
   const [editMachine, setEditMachine] = useState<DbMachine | null>(null);
-  const [machineForm, setMachineForm] = useState({ name: '', model: '', serial_number: '', status: 'operational' as string });
+  const [machineForm, setMachineForm] = useState({ name: '', model: '', serial_number: '', status: 'operational' as string, type: '' as string });
 
   if (lc) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   if (!client) return <div className="text-center py-12 text-muted-foreground">Client introuvable</div>;
 
   const openAdd = () => {
     setEditMachine(null);
-    setMachineForm({ name: '', model: '', serial_number: '', status: 'operational' });
+    setMachineForm({ name: '', model: '', serial_number: '', status: 'operational', type: '' });
     setOpenMachine(true);
   };
 
   const openEdit = (m: DbMachine) => {
     setEditMachine(m);
-    setMachineForm({ name: m.name, model: m.model || '', serial_number: m.serial_number || '', status: m.status });
+    setMachineForm({ name: m.name, model: m.model || '', serial_number: m.serial_number || '', status: m.status, type: m.type || '' });
     setOpenMachine(true);
   };
 
   const handleSubmitMachine = () => {
     if (!machineForm.name) return;
     if (editMachine) {
-      updateMachine.mutate({ id: editMachine.id, name: machineForm.name, model: machineForm.model, serial_number: machineForm.serial_number, status: machineForm.status }, {
+      updateMachine.mutate({ id: editMachine.id, name: machineForm.name, model: machineForm.model, serial_number: machineForm.serial_number, status: machineForm.status, type: machineForm.type || null }, {
         onSuccess: () => { setOpenMachine(false); setEditMachine(null); }
       });
     } else {
@@ -52,6 +52,7 @@ export default function ClientDetail() {
         serial_number: machineForm.serial_number,
         install_date: new Date().toISOString().split('T')[0],
         status: machineForm.status,
+        type: machineForm.type || null,
       }, {
         onSuccess: () => { setOpenMachine(false); }
       });
@@ -85,6 +86,16 @@ export default function ClientDetail() {
               <div><Label>Modèle</Label><Input value={machineForm.model} onChange={e => setMachineForm({...machineForm, model: e.target.value})} /></div>
               <div><Label>N° série</Label><Input value={machineForm.serial_number} onChange={e => setMachineForm({...machineForm, serial_number: e.target.value})} /></div>
               <div>
+                <Label>Type</Label>
+                <Select value={machineForm.type} onValueChange={v => setMachineForm({...machineForm, type: v})}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner un type..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="piston">Piston</SelectItem>
+                    <SelectItem value="engrenage">Engrenage</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Statut</Label>
                 <Select value={machineForm.status} onValueChange={v => setMachineForm({...machineForm, status: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -115,7 +126,7 @@ export default function ClientDetail() {
                   <Cpu className="w-5 h-5 text-primary" />
                   <div>
                     <h3 className="font-semibold text-sm">{machine.name}</h3>
-                    <p className="text-xs text-muted-foreground">{machine.model} · {machine.serial_number}</p>
+                    <p className="text-xs text-muted-foreground">{machine.model} · {machine.serial_number}{machine.type ? ` · ${machine.type.charAt(0).toUpperCase() + machine.type.slice(1)}` : ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

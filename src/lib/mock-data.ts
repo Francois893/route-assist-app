@@ -96,5 +96,4 @@ export const defaultAuditChecklist = [
   item('pi5', 'Carcasse', 'Pistolet'),
   item('pi6', 'Sécurité', 'Pistolet'),
   item('pi7', 'Buse', 'Pistolet'),
-  { id: 'ac10', label: 'Contrôle de la température de fonctionnement', checked: false, comment: '' },
 ];

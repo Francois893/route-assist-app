@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { useClients, useMachines, useInterventions, useTechnicians, useAddIntervention, useUpdateIntervention } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,12 +85,13 @@ export default function Interventions() {
   });
 
   const handleSubmit = () => {
-    if (!form.client_id) return;
+    if (!form.client_id) { toast.error("Veuillez sélectionner un client"); return; }
+    if (!form.date) { toast.error("Veuillez sélectionner une date"); return; }
     const payload = {
       client_id: form.client_id,
       machine_id: form.machine_ids[0] || null,
       machine_ids: form.machine_ids,
-      technician_id: form.technician_id,
+      technician_id: form.technician_id || null,
       date: form.date,
       type: form.type,
       description: form.description,
@@ -99,9 +101,15 @@ export default function Interventions() {
       status: form.status,
     };
     if (editId) {
-      updateIntervention.mutate({ id: editId, ...payload }, { onSuccess: () => { setOpen(false); setEditId(null); } });
+      updateIntervention.mutate({ id: editId, ...payload }, {
+        onSuccess: () => { setOpen(false); setEditId(null); toast.success("Intervention mise à jour"); },
+        onError: (err) => { toast.error("Erreur: " + err.message); },
+      });
     } else {
-      addIntervention.mutate({ ...payload, photos: [] } as any, { onSuccess: () => { setOpen(false); } });
+      addIntervention.mutate({ ...payload, photos: [] } as any, {
+        onSuccess: () => { setOpen(false); toast.success("Intervention créée"); },
+        onError: (err) => { toast.error("Erreur: " + err.message); },
+      });
     }
   };
 

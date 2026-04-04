@@ -97,11 +97,11 @@ export default function PublicMachinePage() {
 
   const lastIntervention = interventions[0];
   const statusIcon = machine.status === "operational" ? (
-    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+    <CheckCircle2 className="w-5 h-5 text-primary" />
   ) : machine.status === "hors-service" ? (
     <AlertTriangle className="w-5 h-5 text-destructive" />
   ) : (
-    <Wrench className="w-5 h-5 text-amber-500" />
+    <Wrench className="w-5 h-5 text-accent-foreground" />
   );
 
   return (

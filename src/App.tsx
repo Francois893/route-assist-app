@@ -35,11 +35,14 @@ const queryClient = new QueryClient({
     queries: {
       gcTime: 1000 * 60 * 60 * 24, // 24h – keep cache for offline
       staleTime: 1000 * 60 * 5, // 5min
-      retry: (failureCount, error) => {
-        // Don't retry when offline
+      networkMode: "offlineFirst", // serve cache immediately, refetch in background when online
+      retry: (failureCount) => {
         if (!navigator.onLine) return false;
         return failureCount < 2;
       },
+    },
+    mutations: {
+      networkMode: "offlineFirst",
     },
   },
 });

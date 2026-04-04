@@ -1,40 +1,55 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useClients, useInterventions, useTechnicians } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WeekDayBar from "@/components/route-planning/WeekDayBar";
 import DayItinerary from "@/components/route-planning/DayItinerary";
-import FranceMap from "@/components/route-planning/FranceMap";
 import { optimizeOrder, calculateTravelTimes } from "@/lib/route-optimizer";
 import { Route, Loader2, Home, Calendar, Navigation, Clock, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
 
+// Lazy-load the map to isolate Leaflet crashes
+const FranceMap = lazy(() => import("@/components/route-planning/FranceMap"));
+
+// Local error boundary just for the map
+class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error("Map crash:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-full items-center justify-center bg-muted/30 text-sm text-muted-foreground p-8 text-center">
+          <div>
+            <p className="font-medium mb-2">La carte n'a pas pu se charger</p>
+            <button onClick={() => this.setState({ hasError: false })} className="text-primary underline text-xs">Réessayer</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-function parseDateInput(dateStr: string) {
-  const [year, month, day] = dateStr.split("-").map(Number);
-
-  if (!year || !month || !day) {
-    return null;
-  }
-
-  const parsed = new Date(year, month - 1, day);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+function safeFormatDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-function formatDateInput(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function safeParse(s: string): Date {
+  const parts = s.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return new Date();
+  return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
-function getTodayDate() {
-  return formatDateInput(new Date());
-}
+function getTodayDate() { return safeFormatDate(new Date()); }
 
-function getWeekDates(dateStr: string) {
-  const d = parseDateInput(dateStr) ?? new Date();
+function getWeekDates(dateStr: string): string[] {
+  const d = safeParse(dateStr);
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(d);
@@ -42,14 +57,14 @@ function getWeekDates(dateStr: string) {
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + i);
-    return formatDateInput(date);
+    return safeFormatDate(date);
   });
 }
 
-function shiftWeek(dateStr: string, weeks: number) {
-  const d = parseDateInput(dateStr) ?? new Date();
+function shiftWeek(dateStr: string, weeks: number): string {
+  const d = safeParse(dateStr);
   d.setDate(d.getDate() + weeks * 7);
-  return formatDateInput(d);
+  return safeFormatDate(d);
 }
 
 export default function RoutePlanning() {
@@ -57,10 +72,11 @@ export default function RoutePlanning() {
   const { data: interventions = [], isLoading } = useInterventions();
   const { data: technicians = [] } = useTechnicians();
   const [selectedTech, setSelectedTech] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [optimized, setOptimized] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
+  // Auto-select first tech — in useEffect to avoid render loops
   useEffect(() => {
     if (!selectedTech && technicians.length > 0) {
       setSelectedTech(technicians[0].id);
@@ -71,21 +87,22 @@ export default function RoutePlanning() {
   const activeTech = technicians.find(t => t.id === selectedTech);
 
   const homePoint = useMemo(() => {
-    if (activeTech?.home_latitude == null || activeTech?.home_longitude == null) {
-      return null;
-    }
+    if (!activeTech?.home_latitude || !activeTech?.home_longitude) return null;
+    const lat = activeTech.home_latitude;
+    const lng = activeTech.home_longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }, [activeTech?.home_latitude, activeTech?.home_longitude]);
 
-    return { lat: activeTech.home_latitude, lng: activeTech.home_longitude };
-  }, [activeTech]);
-
-  // All interventions for the week for this tech
+  // Filter week interventions for selected tech
   const weekInterventions = useMemo(() => {
+    if (!selectedTech) return [];
     return interventions.filter(
       i => i.technician_id === selectedTech && i.status !== "terminee" && weekDates.includes(i.date)
     );
   }, [interventions, selectedTech, weekDates]);
 
-  // Group by day and enrich with client data + optimization
+  // Process each day: enrich, optimize, calculate travel
   const processedDays = useMemo(() => {
     return weekDates.map((date, dayIdx) => {
       const dayInters = weekInterventions
@@ -95,25 +112,16 @@ export default function RoutePlanning() {
           client: clients.find(c => c.id === inter.client_id),
         }));
 
-      // Get geo-located interventions
       const geoInters = dayInters
-        .filter(i => i.client?.latitude && i.client?.longitude)
-        .map(i => ({
-          ...i,
-          lat: i.client!.latitude!,
-          lng: i.client!.longitude!,
-        }));
+        .filter(i => Number.isFinite(i.client?.latitude) && Number.isFinite(i.client?.longitude))
+        .map(i => ({ ...i, lat: i.client!.latitude!, lng: i.client!.longitude! }));
 
-      // Optimize order if enabled
       const ordered = optimized && geoInters.length > 1
         ? optimizeOrder(geoInters, homePoint?.lat, homePoint?.lng)
         : geoInters;
 
-      // Calculate travel times between stops
       const { travelFromPrev, travelToFirst, travelFromLast } = calculateTravelTimes(
-        ordered,
-        homePoint?.lat,
-        homePoint?.lng
+        ordered, homePoint?.lat, homePoint?.lng
       );
 
       const enriched = ordered.map((inter, idx) => ({
@@ -121,45 +129,30 @@ export default function RoutePlanning() {
         travelFromPrev: travelFromPrev[idx] || 0,
       }));
 
-      // Include non-geolocated interventions at the end
       const nonGeo = dayInters
-        .filter(i => !i.client?.latitude || !i.client?.longitude)
+        .filter(i => !Number.isFinite(i.client?.latitude) || !Number.isFinite(i.client?.longitude))
         .map(i => ({ ...i, lat: 0, lng: 0, travelFromPrev: 0 }));
 
-      return {
-        date,
-        dayIdx,
-        interventions: [...enriched, ...nonGeo],
-        geoInterventions: enriched,
-        travelToFirst,
-        travelFromLast,
-      };
+      return { date, dayIdx, interventions: [...enriched, ...nonGeo], geoInterventions: enriched, travelToFirst, travelFromLast };
     });
   }, [weekDates, weekInterventions, clients, optimized, homePoint]);
 
-  // Compute stats
+  // Stats
   const totalInterventions = weekInterventions.length;
   const totalTravel = processedDays.reduce((s, d) => {
-    const interTravel = d.interventions.reduce((ss, i) => ss + i.travelFromPrev, 0);
-    return s + interTravel + (homePoint ? d.travelToFirst + d.travelFromLast : 0);
+    return s + d.interventions.reduce((ss, i) => ss + i.travelFromPrev, 0) + (homePoint ? d.travelToFirst + d.travelFromLast : 0);
   }, 0);
   const totalWork = weekInterventions.reduce((s, i) => s + (i.duration || 0), 0);
-  const totalKm = Math.round(totalTravel * 1); // ~1 km/min at 60km/h
+  const totalKm = Math.round(totalTravel);
 
-  // Map data
-  const filteredDays = selectedDay !== null
-    ? processedDays.filter((_, i) => i === selectedDay)
-    : processedDays;
+  // Filtered days for display
+  const filteredDays = selectedDay !== null ? processedDays.filter((_, i) => i === selectedDay) : processedDays;
 
   const mapPoints = filteredDays.flatMap(d =>
     d.geoInterventions.map((inter, idx) => ({
-      lat: inter.lat,
-      lng: inter.lng,
-      label: String(idx + 1),
-      dayIndex: d.dayIdx,
-      orderInDay: idx,
-      clientName: inter.client?.name || "",
-      interventionType: inter.type,
+      lat: inter.lat, lng: inter.lng, label: String(idx + 1),
+      dayIndex: d.dayIdx, orderInDay: idx,
+      clientName: inter.client?.name || "", interventionType: inter.type,
       travelFromPrev: inter.travelFromPrev,
     }))
   );
@@ -168,10 +161,7 @@ export default function RoutePlanning() {
     .filter(d => d.geoInterventions.length > 0)
     .map(d => {
       const pts = d.geoInterventions.map(i => ({ lat: i.lat, lng: i.lng }));
-      const allPts = homePoint
-        ? [homePoint, ...pts, homePoint]
-        : pts;
-      return { dayIndex: d.dayIdx, points: allPts };
+      return { dayIndex: d.dayIdx, points: homePoint ? [homePoint, ...pts, homePoint] : pts };
     });
 
   if (isLoading) {
@@ -182,8 +172,8 @@ export default function RoutePlanning() {
     );
   }
 
-  const weekStart = parseDateInput(weekDates[0]) ?? new Date();
-  const weekEnd = parseDateInput(weekDates[6]) ?? weekStart;
+  const weekStart = safeParse(weekDates[0]);
+  const weekEnd = safeParse(weekDates[6]);
   const weekLabel = `${weekStart.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — ${weekEnd.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`;
 
   return (
@@ -225,11 +215,7 @@ export default function RoutePlanning() {
           </Button>
         </div>
 
-        <Button
-          onClick={() => setOptimized(!optimized)}
-          variant={optimized ? "default" : "outline"}
-          className="rounded-xl"
-        >
+        <Button onClick={() => setOptimized(!optimized)} variant={optimized ? "default" : "outline"} className="rounded-xl">
           <Route className="w-4 h-4 mr-1.5" />
           {optimized ? "Optimisé ✓" : "Optimiser les trajets"}
         </Button>
@@ -243,7 +229,7 @@ export default function RoutePlanning() {
         </div>
       )}
 
-      {/* Week navigation */}
+      {/* Week bar */}
       <div>
         <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5" />
@@ -307,40 +293,36 @@ export default function RoutePlanning() {
 
       {/* Map + Itinerary */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Map - larger */}
         <Card className="lg:col-span-3 p-0 overflow-hidden rounded-2xl">
           <div className="h-[450px] lg:h-[550px]">
-            <FranceMap
-              homePoint={homePoint}
-              mapPoints={mapPoints}
-              routesByDay={routesByDay}
-              showRoutes={optimized}
-            />
+            <MapErrorBoundary>
+              <Suspense fallback={
+                <div className="flex h-full items-center justify-center bg-muted/30">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  <span className="ml-2 text-sm text-muted-foreground">Chargement carte…</span>
+                </div>
+              }>
+                <FranceMap homePoint={homePoint} mapPoints={mapPoints} routesByDay={routesByDay} showRoutes={optimized} />
+              </Suspense>
+            </MapErrorBoundary>
           </div>
         </Card>
 
-        {/* Itinerary */}
         <div className="lg:col-span-2 space-y-2 max-h-[550px] overflow-y-auto pr-1">
           <h2 className="font-semibold flex items-center gap-2 text-sm sticky top-0 bg-background py-2 z-10">
             <Calendar className="w-4 h-4 text-primary" />
             Itinéraire détaillé
           </h2>
-
           {filteredDays.map(d => {
             if (d.interventions.length === 0) return null;
             return (
               <DayItinerary
-                key={d.date}
-                date={d.date}
-                dayIdx={d.dayIdx}
-                interventions={d.interventions}
-                hasHome={!!homePoint}
-                travelToFirst={d.travelToFirst}
-                travelFromLast={d.travelFromLast}
+                key={d.date} date={d.date} dayIdx={d.dayIdx}
+                interventions={d.interventions} hasHome={!!homePoint}
+                travelToFirst={d.travelToFirst} travelFromLast={d.travelFromLast}
               />
             );
           })}
-
           {totalInterventions === 0 && (
             <Card className="p-8 text-center text-muted-foreground text-sm rounded-2xl">
               Aucune intervention planifiée cette semaine
@@ -357,10 +339,7 @@ export default function RoutePlanning() {
           if (count === 0) return null;
           return (
             <div key={d} className="flex items-center gap-1.5">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ background: `hsl(${[24, 210, 152, 280, 38, 0, 180][i]}, ${[95, 80, 60, 60, 92, 72, 60][i]}%, ${[53, 55, 42, 55, 50, 51, 45][i]}%)` }}
-              />
+              <div className="w-3 h-3 rounded-full" style={{ background: `hsl(${[24, 210, 152, 280, 38, 0, 180][i]}, ${[95, 80, 60, 60, 92, 72, 60][i]}%, ${[53, 55, 42, 55, 50, 51, 45][i]}%)` }} />
               <span>{DAY_LABELS[i]}</span>
             </div>
           );

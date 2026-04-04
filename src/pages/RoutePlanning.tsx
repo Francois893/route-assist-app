@@ -39,16 +39,22 @@ export default function RoutePlanning() {
   const [optimized, setOptimized] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  if (!selectedTech && technicians.length > 0) {
-    setSelectedTech(technicians[0].id);
-  }
+  useEffect(() => {
+    if (!selectedTech && technicians.length > 0) {
+      setSelectedTech(technicians[0].id);
+    }
+  }, [selectedTech, technicians]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const activeTech = technicians.find(t => t.id === selectedTech);
 
-  const homePoint = activeTech?.home_latitude && activeTech?.home_longitude
-    ? { lat: activeTech.home_latitude, lng: activeTech.home_longitude }
-    : null;
+  const homePoint = useMemo(() => {
+    if (activeTech?.home_latitude == null || activeTech?.home_longitude == null) {
+      return null;
+    }
+
+    return { lat: activeTech.home_latitude, lng: activeTech.home_longitude };
+  }, [activeTech]);
 
   // All interventions for the week for this tech
   const weekInterventions = useMemo(() => {

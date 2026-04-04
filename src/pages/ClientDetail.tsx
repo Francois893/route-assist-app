@@ -41,7 +41,7 @@ export default function ClientDetail() {
   const handleSubmitMachine = () => {
     if (!machineForm.name) return;
     if (editMachine) {
-      updateMachine.mutate({ id: editMachine.id, name: machineForm.name, model: machineForm.model, serial_number: machineForm.serial_number, status: machineForm.status }, {
+      updateMachine.mutate({ id: editMachine.id, name: machineForm.name, model: machineForm.model, serial_number: machineForm.serial_number, status: machineForm.status, type: machineForm.type || null }, {
         onSuccess: () => { setOpenMachine(false); setEditMachine(null); }
       });
     } else {

@@ -52,6 +52,7 @@ export default function ClientDetail() {
         serial_number: machineForm.serial_number,
         install_date: new Date().toISOString().split('T')[0],
         status: machineForm.status,
+        type: machineForm.type || null,
       }, {
         onSuccess: () => { setOpenMachine(false); }
       });

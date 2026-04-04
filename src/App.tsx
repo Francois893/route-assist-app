@@ -29,6 +29,7 @@ import OffresPage from "@/pages/OffresPage";
 import InventoryPage from "@/pages/InventoryPage";
 import NotFound from "@/pages/NotFound";
 import SettingsPage from "@/pages/SettingsPage";
+import PublicMachinePage from "@/pages/PublicMachinePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,30 +114,28 @@ function AuthGate() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/index" element={<Navigate to="/" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/clients/:id" element={<ClientDetail />} />
-          <Route path="/machines" element={<MachinesPage />} />
-          <Route path="/interventions" element={<Interventions />} />
-          <Route path="/audit" element={<AuditPage />} />
-          <Route path="/audits" element={<AuditHistoryPage />} />
-          <Route path="/planning" element={<PlanningPage />} />
-          <Route path="/tournees" element={<RoutePlanning />} />
-          <Route path="/devis" element={<DevisPage />} />
-          <Route path="/materiel" element={<EquipmentPage />} />
-          <Route path="/offres" element={<OffresPage />} />
-          <Route path="/inventaire" element={<InventoryPage />} />
-          <Route path="/techniciens" element={<TechniciansPage />} />
-          <Route path="/parametres" element={<SettingsPage />} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/index" element={<Navigate to="/" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/clients/:id" element={<ClientDetail />} />
+        <Route path="/machines" element={<MachinesPage />} />
+        <Route path="/interventions" element={<Interventions />} />
+        <Route path="/audit" element={<AuditPage />} />
+        <Route path="/audits" element={<AuditHistoryPage />} />
+        <Route path="/planning" element={<PlanningPage />} />
+        <Route path="/tournees" element={<RoutePlanning />} />
+        <Route path="/devis" element={<DevisPage />} />
+        <Route path="/materiel" element={<EquipmentPage />} />
+        <Route path="/offres" element={<OffresPage />} />
+        <Route path="/inventaire" element={<InventoryPage />} />
+        <Route path="/techniciens" element={<TechniciansPage />} />
+        <Route path="/parametres" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
@@ -147,7 +146,14 @@ const App = () => (
         <NetworkStatusBar />
         <Toaster />
         <Sonner />
-        <AuthGate />
+        <BrowserRouter>
+          <Routes>
+            {/* Public route – no auth required */}
+            <Route path="/m/:id" element={<PublicMachinePage />} />
+            {/* All other routes go through auth */}
+            <Route path="*" element={<AuthGate />} />
+          </Routes>
+        </BrowserRouter>
       </TooltipProvider>
     </AppErrorBoundary>
   </PersistQueryClientProvider>

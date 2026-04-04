@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Cpu, Phone, Mail, MapPin, User, Pencil, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Cpu, Phone, Mail, MapPin, User, Pencil, Loader2, QrCode } from "lucide-react";
 import { useState } from "react";
 import type { DbMachine } from "@/hooks/use-data";
+import MachineQrCode from "@/components/MachineQrCode";
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export default function ClientDetail() {
   const updateMachine = useUpdateMachine();
   const [openMachine, setOpenMachine] = useState(false);
   const [editMachine, setEditMachine] = useState<DbMachine | null>(null);
+  const [qrMachine, setQrMachine] = useState<DbMachine | null>(null);
   const [machineForm, setMachineForm] = useState({ name: '', model: '', serial_number: '', status: 'operational' as string, type: '' as string });
 
   if (lc) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -131,6 +133,9 @@ export default function ClientDetail() {
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={machine.status} />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setQrMachine(machine)} title="QR Code">
+                    <QrCode className="w-3 h-3" />
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(machine)}>
                     <Pencil className="w-3 h-3" />
                   </Button>
@@ -189,6 +194,16 @@ export default function ClientDetail() {
           </table>
         </div>
       </Card>
+
+      {qrMachine && (
+        <MachineQrCode
+          open={!!qrMachine}
+          onClose={() => setQrMachine(null)}
+          machineId={qrMachine.id}
+          machineName={qrMachine.name}
+          serialNumber={qrMachine.serial_number}
+        />
+      )}
     </div>
   );
 }

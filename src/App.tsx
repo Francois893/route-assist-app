@@ -146,7 +146,14 @@ const App = () => (
         <NetworkStatusBar />
         <Toaster />
         <Sonner />
-        <AuthGate />
+        <BrowserRouter>
+          <Routes>
+            {/* Public route – no auth required */}
+            <Route path="/m/:id" element={<PublicMachinePage />} />
+            {/* All other routes go through auth */}
+            <Route path="*" element={<AuthGate />} />
+          </Routes>
+        </BrowserRouter>
       </TooltipProvider>
     </AppErrorBoundary>
   </PersistQueryClientProvider>

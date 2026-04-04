@@ -71,6 +71,7 @@ export default function AuditPage() {
   const [newMachineName, setNewMachineName] = useState("");
   const [newMachineType, setNewMachineType] = useState<string>("piston");
   const [newMachineSerial, setNewMachineSerial] = useState("");
+  const [newMachineModel, setNewMachineModel] = useState("");
 
   const updateMachineState = (machineId: string, update: Partial<MachineAuditState>) => {
     setMachineStates(prev => ({

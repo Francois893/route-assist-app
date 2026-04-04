@@ -15,11 +15,12 @@ import type { DbAudit } from "@/hooks/use-data";
 interface MachineAuditData {
   machine_id: string;
   machine_name: string;
+  machine_type?: string;
   etat_general: string;
   securite: string;
   proprete: string;
   usure: string;
-  checklist: { id: string; label: string; checked: boolean; comment: string }[];
+  checklist: { id: string; label: string; checked: boolean; comment: string; status?: string; category?: string }[];
   observations: string;
 }
 

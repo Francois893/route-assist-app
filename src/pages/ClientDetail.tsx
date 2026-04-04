@@ -34,7 +34,7 @@ export default function ClientDetail() {
 
   const openEdit = (m: DbMachine) => {
     setEditMachine(m);
-    setMachineForm({ name: m.name, model: m.model || '', serial_number: m.serial_number || '', status: m.status });
+    setMachineForm({ name: m.name, model: m.model || '', serial_number: m.serial_number || '', status: m.status, type: m.type || '' });
     setOpenMachine(true);
   };
 

@@ -161,7 +161,7 @@ export default function AuditPage() {
     addMachine.mutate({
       client_id: inter.client_id,
       name: newMachineName.trim(),
-      model: "",
+      model: newMachineModel.trim(),
       serial_number: newMachineSerial.trim(),
       install_date: new Date().toISOString().split('T')[0],
       status: "operational",

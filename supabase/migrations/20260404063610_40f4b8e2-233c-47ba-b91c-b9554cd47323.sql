@@ -1,0 +1,1 @@
+ALTER TABLE public.machines ADD COLUMN type text DEFAULT null;

@@ -112,7 +112,7 @@ export function useInterventions(clientId?: string) {
 export function useAddIntervention() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (inter: Omit<DbIntervention, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (inter: Omit<DbIntervention, "id" | "created_at" | "updated_at" | "modified_by" | "modified_by_name"> & { modified_by?: string | null; modified_by_name?: string | null }) => {
       const { data, error } = await supabase.from("interventions").insert(inter).select().single();
       if (error) throw error;
       return data;

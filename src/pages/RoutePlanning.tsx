@@ -1,14 +1,13 @@
-import { useState, useMemo, Suspense, lazy } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useClients, useInterventions, useTechnicians } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WeekDayBar from "@/components/route-planning/WeekDayBar";
 import DayItinerary from "@/components/route-planning/DayItinerary";
+import FranceMap from "@/components/route-planning/FranceMap";
 import { optimizeOrder, calculateTravelTimes } from "@/lib/route-optimizer";
 import { Route, Loader2, Home, Calendar, Navigation, Clock, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
-
-const FranceMap = lazy(() => import("@/components/route-planning/FranceMap"));
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -40,16 +39,22 @@ export default function RoutePlanning() {
   const [optimized, setOptimized] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  if (!selectedTech && technicians.length > 0) {
-    setSelectedTech(technicians[0].id);
-  }
+  useEffect(() => {
+    if (!selectedTech && technicians.length > 0) {
+      setSelectedTech(technicians[0].id);
+    }
+  }, [selectedTech, technicians]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const activeTech = technicians.find(t => t.id === selectedTech);
 
-  const homePoint = activeTech?.home_latitude && activeTech?.home_longitude
-    ? { lat: activeTech.home_latitude, lng: activeTech.home_longitude }
-    : null;
+  const homePoint = useMemo(() => {
+    if (activeTech?.home_latitude == null || activeTech?.home_longitude == null) {
+      return null;
+    }
+
+    return { lat: activeTech.home_latitude, lng: activeTech.home_longitude };
+  }, [activeTech]);
 
   // All interventions for the week for this tech
   const weekInterventions = useMemo(() => {
@@ -280,20 +285,14 @@ export default function RoutePlanning() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Map - larger */}
         <Card className="lg:col-span-3 p-0 overflow-hidden rounded-2xl">
-          <Suspense fallback={
-            <div className="h-[450px] flex items-center justify-center bg-muted/30">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          }>
-            <div className="h-[450px] lg:h-[550px]">
-              <FranceMap
-                homePoint={homePoint}
-                mapPoints={mapPoints}
-                routesByDay={routesByDay}
-                showRoutes={optimized}
-              />
-            </div>
-          </Suspense>
+          <div className="h-[450px] lg:h-[550px]">
+            <FranceMap
+              homePoint={homePoint}
+              mapPoints={mapPoints}
+              routesByDay={routesByDay}
+              showRoutes={optimized}
+            />
+          </div>
         </Card>
 
         {/* Itinerary */}

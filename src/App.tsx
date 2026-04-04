@@ -1,5 +1,6 @@
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,6 +29,51 @@ import SettingsPage from "@/pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("App render error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+            <h1 className="text-lg font-semibold text-foreground">Un problème d’affichage est survenu</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Retournez à l’accueil ou rechargez la page pour continuer.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => window.location.assign("/")}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+              >
+                Accueil
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground"
+              >
+                Recharger
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function AuthGate() {
   const { user, loading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
@@ -42,7 +88,6 @@ function AuthGate() {
 
   if (!user) return <AuthPage />;
 
-  // Profile not yet completed (name empty)
   if (profile && !profile.name) {
     return <ProfileSetupPage userId={user.id} />;
   }
@@ -52,7 +97,7 @@ function AuthGate() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/index" element={<HomePage />} />
+          <Route path="/index" element={<Navigate to="/" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/clients/:id" element={<ClientDetail />} />
@@ -77,11 +122,13 @@ function AuthGate() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthGate />
-    </TooltipProvider>
+    <AppErrorBoundary>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthGate />
+      </TooltipProvider>
+    </AppErrorBoundary>
   </QueryClientProvider>
 );
 

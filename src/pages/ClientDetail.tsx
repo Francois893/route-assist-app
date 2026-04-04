@@ -86,6 +86,16 @@ export default function ClientDetail() {
               <div><Label>Modèle</Label><Input value={machineForm.model} onChange={e => setMachineForm({...machineForm, model: e.target.value})} /></div>
               <div><Label>N° série</Label><Input value={machineForm.serial_number} onChange={e => setMachineForm({...machineForm, serial_number: e.target.value})} /></div>
               <div>
+                <Label>Type</Label>
+                <Select value={machineForm.type} onValueChange={v => setMachineForm({...machineForm, type: v})}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner un type..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="piston">Piston</SelectItem>
+                    <SelectItem value="engrenage">Engrenage</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Statut</Label>
                 <Select value={machineForm.status} onValueChange={v => setMachineForm({...machineForm, status: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

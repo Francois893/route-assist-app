@@ -1,10 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense, lazy } from "react";
 import { useClients, useInterventions, useTechnicians } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StatusBadge } from "@/components/StatusBadge";
-import { MapPin, Clock, Route, Navigation, Loader2, Home, Calendar } from "lucide-react";
+import WeekDayBar from "@/components/route-planning/WeekDayBar";
+import DayItinerary from "@/components/route-planning/DayItinerary";
+import { optimizeOrder, calculateTravelTimes } from "@/lib/route-optimizer";
+import { Route, Loader2, Home, Calendar, Navigation, Clock, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
+
+const FranceMap = lazy(() => import("@/components/route-planning/FranceMap"));
+
+const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 function getWeekDates(dateStr: string) {
   const d = new Date(dateStr);
@@ -19,16 +25,11 @@ function getWeekDates(dateStr: string) {
   });
 }
 
-const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const DAY_COLORS = [
-  "hsl(24, 95%, 53%)",   // orange
-  "hsl(210, 80%, 55%)",  // blue
-  "hsl(152, 60%, 42%)",  // green
-  "hsl(280, 60%, 55%)",  // purple
-  "hsl(38, 92%, 50%)",   // yellow
-  "hsl(0, 72%, 51%)",    // red
-  "hsl(180, 60%, 45%)",  // teal
-];
+function shiftWeek(dateStr: string, weeks: number) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + weeks * 7);
+  return d.toISOString().split("T")[0];
+}
 
 export default function RoutePlanning() {
   const { data: clients = [] } = useClients();
@@ -37,6 +38,7 @@ export default function RoutePlanning() {
   const [selectedTech, setSelectedTech] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [optimized, setOptimized] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   if (!selectedTech && technicians.length > 0) {
     setSelectedTech(technicians[0].id);
@@ -45,252 +47,297 @@ export default function RoutePlanning() {
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const activeTech = technicians.find(t => t.id === selectedTech);
 
+  const homePoint = activeTech?.home_latitude && activeTech?.home_longitude
+    ? { lat: activeTech.home_latitude, lng: activeTech.home_longitude }
+    : null;
+
+  // All interventions for the week for this tech
   const weekInterventions = useMemo(() => {
     return interventions.filter(
       i => i.technician_id === selectedTech && i.status !== "terminee" && weekDates.includes(i.date)
     );
   }, [interventions, selectedTech, weekDates]);
 
-  const interventionsByDay = useMemo(() => {
-    const map: Record<string, typeof weekInterventions> = {};
-    weekDates.forEach(d => { map[d] = []; });
-    weekInterventions.forEach(i => {
-      if (map[i.date]) map[i.date].push(i);
+  // Group by day and enrich with client data + optimization
+  const processedDays = useMemo(() => {
+    return weekDates.map((date, dayIdx) => {
+      const dayInters = weekInterventions
+        .filter(i => i.date === date)
+        .map(inter => ({
+          ...inter,
+          client: clients.find(c => c.id === inter.client_id),
+        }));
+
+      // Get geo-located interventions
+      const geoInters = dayInters
+        .filter(i => i.client?.latitude && i.client?.longitude)
+        .map(i => ({
+          ...i,
+          lat: i.client!.latitude!,
+          lng: i.client!.longitude!,
+        }));
+
+      // Optimize order if enabled
+      const ordered = optimized && geoInters.length > 1
+        ? optimizeOrder(geoInters, homePoint?.lat, homePoint?.lng)
+        : geoInters;
+
+      // Calculate travel times between stops
+      const { travelFromPrev, travelToFirst, travelFromLast } = calculateTravelTimes(
+        ordered,
+        homePoint?.lat,
+        homePoint?.lng
+      );
+
+      const enriched = ordered.map((inter, idx) => ({
+        ...inter,
+        travelFromPrev: travelFromPrev[idx] || 0,
+      }));
+
+      // Include non-geolocated interventions at the end
+      const nonGeo = dayInters
+        .filter(i => !i.client?.latitude || !i.client?.longitude)
+        .map(i => ({ ...i, lat: 0, lng: 0, travelFromPrev: 0 }));
+
+      return {
+        date,
+        dayIdx,
+        interventions: [...enriched, ...nonGeo],
+        geoInterventions: enriched,
+        travelToFirst,
+        travelFromLast,
+      };
     });
-    return map;
-  }, [weekInterventions, weekDates]);
+  }, [weekDates, weekInterventions, clients, optimized, homePoint]);
 
-  // All week interventions with client data for map
-  const allWeekWithClients = weekInterventions.map(inter => ({
-    ...inter,
-    client: clients.find(c => c.id === inter.client_id),
-    dayIndex: weekDates.indexOf(inter.date),
-  }));
+  // Compute stats
+  const totalInterventions = weekInterventions.length;
+  const totalTravel = processedDays.reduce((s, d) => {
+    const interTravel = d.interventions.reduce((ss, i) => ss + i.travelFromPrev, 0);
+    return s + interTravel + (homePoint ? d.travelToFirst + d.travelFromLast : 0);
+  }, 0);
+  const totalWork = weekInterventions.reduce((s, i) => s + (i.duration || 0), 0);
+  const totalKm = Math.round(totalTravel * 1); // ~1 km/min at 60km/h
 
-  const totalTravelWeek = weekInterventions.reduce((s, i) => s + (i.travel_time || 0), 0);
-  const totalDurationWeek = weekInterventions.reduce((s, i) => s + (i.duration || 0) + (i.travel_time || 0), 0);
+  // Map data
+  const filteredDays = selectedDay !== null
+    ? processedDays.filter((_, i) => i === selectedDay)
+    : processedDays;
 
-  if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  const mapPoints = filteredDays.flatMap(d =>
+    d.geoInterventions.map((inter, idx) => ({
+      lat: inter.lat,
+      lng: inter.lng,
+      label: String(idx + 1),
+      dayIndex: d.dayIdx,
+      orderInDay: idx,
+      clientName: inter.client?.name || "",
+      interventionType: inter.type,
+      travelFromPrev: inter.travelFromPrev,
+    }))
+  );
 
-  const homePoint = activeTech?.home_latitude && activeTech?.home_longitude
-    ? { lat: activeTech.home_latitude, lng: activeTech.home_longitude, label: "Domicile" }
-    : null;
+  const routesByDay = filteredDays
+    .filter(d => d.geoInterventions.length > 0)
+    .map(d => {
+      const pts = d.geoInterventions.map(i => ({ lat: i.lat, lng: i.lng }));
+      const allPts = homePoint
+        ? [homePoint, ...pts, homePoint]
+        : pts;
+      return { dayIndex: d.dayIdx, points: allPts };
+    });
 
-  const mapPoints = allWeekWithClients
-    .filter(i => i.client?.latitude && i.client?.longitude)
-    .map(i => ({
-      lat: i.client!.latitude!,
-      lng: i.client!.longitude!,
-      label: i.client!.name?.split(" ")[0] || "",
-      dayIndex: i.dayIndex,
-    }));
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const allGeoPoints = [
-    ...(homePoint ? [homePoint] : []),
-    ...mapPoints.map(p => ({ lat: p.lat, lng: p.lng })),
-  ];
-
-  const lats = allGeoPoints.map(p => p.lat);
-  const lngs = allGeoPoints.map(p => p.lng);
-  const minLat = lats.length ? Math.min(...lats) - 0.05 : 45.1;
-  const maxLat = lats.length ? Math.max(...lats) + 0.05 : 45.8;
-  const minLng = lngs.length ? Math.min(...lngs) - 0.05 : 4.3;
-  const maxLng = lngs.length ? Math.max(...lngs) + 0.05 : 5.9;
-  const rangeLat = maxLat - minLat || 1;
-  const rangeLng = maxLng - minLng || 1;
-
-  const toX = (lng: number) => ((lng - minLng) / rangeLng) * 76 + 12;
-  const toY = (lat: number) => ((maxLat - lat) / rangeLat) * 76 + 12;
-
-  // Build route lines per day: home -> interventions -> home
-  const routeLinesByDay = weekDates.map((d, dayIdx) => {
-    const dayInters = allWeekWithClients
-      .filter(i => i.date === d && i.client?.latitude && i.client?.longitude);
-    if (dayInters.length === 0) return [];
-
-    const points = dayInters.map(i => ({ x: toX(i.client!.longitude!), y: toY(i.client!.latitude!) }));
-    const allPts = homePoint
-      ? [{ x: toX(homePoint.lng), y: toY(homePoint.lat) }, ...points, { x: toX(homePoint.lng), y: toY(homePoint.lat) }]
-      : points;
-
-    const lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
-    for (let i = 0; i < allPts.length - 1; i++) {
-      lines.push({ x1: allPts[i].x, y1: allPts[i].y, x2: allPts[i + 1].x, y2: allPts[i + 1].y });
-    }
-    return lines.map(l => ({ ...l, color: DAY_COLORS[dayIdx] }));
-  });
+  const weekLabel = `${new Date(weekDates[0]).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — ${new Date(weekDates[6]).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`;
 
   return (
-    <div>
+    <div className="space-y-4">
+      {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Optimisation de tournée</h1>
-        <p className="page-subtitle">Planification hebdomadaire des trajets</p>
+        <h1 className="page-title flex items-center gap-2">
+          <Route className="w-6 h-6 text-primary" />
+          Optimisation de tournée
+        </h1>
+        <p className="page-subtitle">Planification hebdomadaire des trajets technicien</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <Select value={selectedTech} onValueChange={setSelectedTech}>
-          <SelectTrigger className="w-52 rounded-xl"><SelectValue placeholder="Technicien" /></SelectTrigger>
-          <SelectContent>{technicians.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+          <SelectTrigger className="w-52 rounded-xl">
+            <SelectValue placeholder="Technicien" />
+          </SelectTrigger>
+          <SelectContent>
+            {technicians.map(t => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
         </Select>
-        <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="h-10 rounded-xl border border-input bg-background px-3 text-sm" />
-        <Button onClick={() => setOptimized(!optimized)} variant={optimized ? "default" : "outline"} className="rounded-xl">
-          <Route className="w-4 h-4 mr-1" /> {optimized ? "Optimisé ✓" : "Optimiser la tournée"}
+
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setSelectedDate(shiftWeek(selectedDate, -1))}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={e => setSelectedDate(e.target.value)}
+            className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+          />
+          <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setSelectedDate(shiftWeek(selectedDate, 1))}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <Button
+          onClick={() => setOptimized(!optimized)}
+          variant={optimized ? "default" : "outline"}
+          className="rounded-xl"
+        >
+          <Route className="w-4 h-4 mr-1.5" />
+          {optimized ? "Optimisé ✓" : "Optimiser les trajets"}
         </Button>
       </div>
 
+      {/* Technician home */}
       {activeTech && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Home className="w-4 h-4 text-primary" />
           <span>Domicile : {activeTech.home_address || "Non renseigné — configurez dans Techniciens"}</span>
         </div>
       )}
 
-      {/* Week overview bar */}
-      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
-        {weekDates.map((d, i) => {
-          const count = (interventionsByDay[d] || []).length;
-          return (
-            <div
-              key={d}
-              className="flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium min-w-[60px] bg-card border border-border/50"
-            >
-              <span className="text-muted-foreground">{DAY_LABELS[i]}</span>
-              <span className="text-[10px] text-muted-foreground/70">{d.slice(5)}</span>
-              {count > 0 && (
-                <span
-                  className="mt-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                  style={{ background: DAY_COLORS[i] }}
-                >{count}</span>
-              )}
+      {/* Week navigation */}
+      <div>
+        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5" />
+          Semaine du {weekLabel}
+        </p>
+        <WeekDayBar
+          weekDates={weekDates}
+          interventionsByDay={Object.fromEntries(processedDays.map(d => [d.date, d.interventions]))}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+        />
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="p-3 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Navigation className="w-4 h-4 text-primary" />
             </div>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="stat-card"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center"><Navigation className="w-5 h-5 text-primary" /></div><div><p className="text-lg font-bold">{weekInterventions.length}</p><p className="text-xs text-muted-foreground">Interventions (semaine)</p></div></div></Card>
-        <Card className="stat-card"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-warning/15 flex items-center justify-center"><Clock className="w-5 h-5 text-warning" /></div><div><p className="text-lg font-bold">{totalTravelWeek} min</p><p className="text-xs text-muted-foreground">Temps trajet (semaine)</p></div></div></Card>
-        <Card className="stat-card"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-info/15 flex items-center justify-center"><Clock className="w-5 h-5 text-info" /></div><div><p className="text-lg font-bold">{Math.floor(totalDurationWeek / 60)}h{String(totalDurationWeek % 60).padStart(2, "0")}</p><p className="text-xs text-muted-foreground">Durée totale (semaine)</p></div></div></Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Map */}
-        <Card className="p-0 overflow-hidden rounded-2xl">
-          <div className="bg-card h-96 lg:h-full min-h-[380px] relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-info/5 to-primary/5 rounded-2xl" />
-            <div className="relative w-full h-full p-6">
-              <div className="absolute inset-0 border border-dashed border-border/40 m-4 rounded-xl" />
-
-              {/* Home marker */}
-              {homePoint && (
-                <div className="absolute flex flex-col items-center z-20" style={{ left: `${toX(homePoint.lng)}%`, top: `${toY(homePoint.lat)}%`, transform: "translate(-50%, -50%)" }}>
-                  <div className="w-10 h-10 rounded-xl bg-card flex items-center justify-center shadow-lg border-2 border-primary">
-                    <Home className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className="text-[10px] font-semibold mt-1 bg-card/90 backdrop-blur px-2 py-0.5 rounded-lg shadow-sm whitespace-nowrap text-primary">Domicile</span>
-                </div>
-              )}
-
-              {/* Intervention markers (all week, color-coded by day) */}
-              {mapPoints.map((pt, idx) => (
-                <div key={idx} className="absolute flex flex-col items-center z-10" style={{ left: `${toX(pt.lng)}%`, top: `${toY(pt.lat)}%`, transform: "translate(-50%, -50%)" }}>
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg"
-                    style={{ background: DAY_COLORS[pt.dayIndex] }}
-                  >{idx + 1}</div>
-                  <span className="text-[10px] font-medium mt-1 bg-card/90 backdrop-blur px-1.5 py-0.5 rounded-lg shadow-sm whitespace-nowrap">{pt.label}</span>
-                </div>
-              ))}
-
-              {/* Route lines */}
-              {optimized && (
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
-                  {routeLinesByDay.flat().map((line, idx) => (
-                    <line key={idx} x1={`${line.x1}%`} y1={`${line.y1}%`} x2={`${line.x2}%`} y2={`${line.y2}%`} stroke={line.color} strokeWidth="2" strokeDasharray="6,4" opacity="0.7" />
-                  ))}
-                </svg>
-              )}
-
-              {allWeekWithClients.length === 0 && !homePoint && (
-                <div className="absolute inset-0 flex items-center justify-center"><p className="text-sm text-muted-foreground">Aucune intervention cette semaine</p></div>
-              )}
+            <div>
+              <p className="text-lg font-bold">{totalInterventions}</p>
+              <p className="text-[11px] text-muted-foreground">Interventions</p>
             </div>
           </div>
         </Card>
+        <Card className="p-3 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-warning/15 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-warning" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">{Math.floor(totalTravel / 60)}h{String(totalTravel % 60).padStart(2, "0")}</p>
+              <p className="text-[11px] text-muted-foreground">Temps trajet</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-3 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-info/15 flex items-center justify-center">
+              <TrendingDown className="w-4 h-4 text-info" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">~{totalKm} km</p>
+              <p className="text-[11px] text-muted-foreground">Distance estimée</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-3 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-success/15 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-success" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">{Math.floor(totalWork / 60)}h{String(totalWork % 60).padStart(2, "0")}</p>
+              <p className="text-[11px] text-muted-foreground">Temps travail</p>
+            </div>
+          </div>
+        </Card>
+      </div>
 
-        {/* Itinerary per day */}
-        <div className="space-y-4">
-          <h2 className="font-semibold flex items-center gap-2">
+      {/* Map + Itinerary */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Map - larger */}
+        <Card className="lg:col-span-3 p-0 overflow-hidden rounded-2xl">
+          <Suspense fallback={
+            <div className="h-[450px] flex items-center justify-center bg-muted/30">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          }>
+            <div className="h-[450px] lg:h-[550px]">
+              <FranceMap
+                homePoint={homePoint}
+                mapPoints={mapPoints}
+                routesByDay={routesByDay}
+                showRoutes={optimized}
+              />
+            </div>
+          </Suspense>
+        </Card>
+
+        {/* Itinerary */}
+        <div className="lg:col-span-2 space-y-2 max-h-[550px] overflow-y-auto pr-1">
+          <h2 className="font-semibold flex items-center gap-2 text-sm sticky top-0 bg-background py-2 z-10">
             <Calendar className="w-4 h-4 text-primary" />
-            Itinéraire semaine du {new Date(weekDates[0]).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+            Itinéraire détaillé
           </h2>
 
-          {weekDates.map((d, dayIdx) => {
-            const dayInters = (interventionsByDay[d] || []).map(inter => ({
-              ...inter,
-              client: clients.find(c => c.id === inter.client_id),
-            }));
-            if (dayInters.length === 0) return null;
-
+          {filteredDays.map(d => {
+            if (d.interventions.length === 0) return null;
             return (
-              <div key={d}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full" style={{ background: DAY_COLORS[dayIdx] }} />
-                  <span className="text-sm font-semibold">{DAY_LABELS[dayIdx]} {d.slice(5)}</span>
-                  <span className="text-xs text-muted-foreground">({dayInters.length} intervention{dayInters.length > 1 ? 's' : ''})</span>
-                </div>
-
-                {homePoint && (
-                  <Card className="p-3 border-dashed border-primary/30 mb-1.5 rounded-xl">
-                    <div className="flex items-center gap-2 text-xs">
-                      <Home className="w-3.5 h-3.5 text-primary" />
-                      <span className="font-medium">Départ domicile</span>
-                    </div>
-                  </Card>
-                )}
-
-                {dayInters.map((inter, idx) => (
-                  <Card key={inter.id} className="p-3 mb-1.5 rounded-xl">
-                    <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: DAY_COLORS[dayIdx] }}>{idx + 1}</div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm">{inter.client?.name}</h3>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" /> {inter.client?.address}, {inter.client?.city}</p>
-                        <div className="flex items-center gap-3 mt-1.5">
-                          <StatusBadge status={inter.type} />
-                          <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" /> {inter.travel_time} min</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-
-                {homePoint && (
-                  <Card className="p-3 border-dashed border-primary/30 mb-3 rounded-xl">
-                    <div className="flex items-center gap-2 text-xs">
-                      <Home className="w-3.5 h-3.5 text-primary" />
-                      <span className="font-medium">Retour domicile</span>
-                    </div>
-                  </Card>
-                )}
-              </div>
+              <DayItinerary
+                key={d.date}
+                date={d.date}
+                dayIdx={d.dayIdx}
+                interventions={d.interventions}
+                hasHome={!!homePoint}
+                travelToFirst={d.travelToFirst}
+                travelFromLast={d.travelFromLast}
+              />
             );
           })}
 
-          {weekInterventions.length === 0 && (
-            <Card className="p-8 text-center text-muted-foreground text-sm rounded-2xl">Aucune intervention planifiée cette semaine</Card>
+          {totalInterventions === 0 && (
+            <Card className="p-8 text-center text-muted-foreground text-sm rounded-2xl">
+              Aucune intervention planifiée cette semaine
+            </Card>
           )}
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 mt-6 text-xs text-muted-foreground">
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span className="font-medium">Légende :</span>
         {weekDates.map((d, i) => {
-          const count = (interventionsByDay[d] || []).length;
+          const count = processedDays[i]?.interventions.length || 0;
           if (count === 0) return null;
           return (
             <div key={d} className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ background: DAY_COLORS[i] }} />
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ background: `hsl(${[24, 210, 152, 280, 38, 0, 180][i]}, ${[95, 80, 60, 60, 92, 72, 60][i]}%, ${[53, 55, 42, 55, 50, 51, 45][i]}%)` }}
+              />
               <span>{DAY_LABELS[i]}</span>
             </div>
           );

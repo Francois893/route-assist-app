@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { addToQueue } from "@/lib/offline-queue";
 import type { Tables } from "@/integrations/supabase/types";
 
 export type DbClient = Tables<"clients">;
@@ -8,6 +9,21 @@ export type DbIntervention = Tables<"interventions">;
 export type DbDevis = Tables<"devis">;
 export type DbTechnician = Tables<"technicians">;
 export type DbAudit = Tables<"audits">;
+
+// Helper: if offline, queue the mutation; otherwise execute it
+async function offlineAware<T>(
+  table: string,
+  type: "insert" | "update",
+  payload: Record<string, unknown>,
+  rowId: string | undefined,
+  onlineFn: () => Promise<T>,
+): Promise<T | null> {
+  if (navigator.onLine) {
+    return onlineFn();
+  }
+  await addToQueue({ table, type, payload, rowId });
+  return null;
+}
 
 // ---- Clients ----
 export function useClients() {
@@ -38,9 +54,11 @@ export function useAddClient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (client: Partial<DbClient> & { name: string; city: string }) => {
-      const { data, error } = await supabase.from("clients").insert(client).select().single();
-      if (error) throw error;
-      return data;
+      return offlineAware("clients", "insert", client, undefined, async () => {
+        const { data, error } = await supabase.from("clients").insert(client).select().single();
+        if (error) throw error;
+        return data;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
   });
@@ -64,9 +82,11 @@ export function useAddMachine() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (machine: Omit<DbMachine, "id" | "created_at" | "updated_at" | "maintenance_interval_days" | "type" | "modified_by" | "modified_by_name"> & { maintenance_interval_days?: number; type?: string | null; modified_by?: string | null; modified_by_name?: string | null }) => {
-      const { data, error } = await supabase.from("machines").insert(machine).select().single();
-      if (error) throw error;
-      return data;
+      return offlineAware("machines", "insert", machine as any, undefined, async () => {
+        const { data, error } = await supabase.from("machines").insert(machine).select().single();
+        if (error) throw error;
+        return data;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["machines"] }),
   });
@@ -76,8 +96,10 @@ export function useUpdateMachine() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<DbMachine> & { id: string }) => {
-      const { error } = await supabase.from("machines").update(data).eq("id", id);
-      if (error) throw error;
+      return offlineAware("machines", "update", data as any, id, async () => {
+        const { error } = await supabase.from("machines").update(data).eq("id", id);
+        if (error) throw error;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["machines"] }),
   });
@@ -113,9 +135,11 @@ export function useAddIntervention() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (inter: Omit<DbIntervention, "id" | "created_at" | "updated_at" | "modified_by" | "modified_by_name"> & { modified_by?: string | null; modified_by_name?: string | null }) => {
-      const { data, error } = await supabase.from("interventions").insert(inter).select().single();
-      if (error) throw error;
-      return data;
+      return offlineAware("interventions", "insert", inter as any, undefined, async () => {
+        const { data, error } = await supabase.from("interventions").insert(inter).select().single();
+        if (error) throw error;
+        return data;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interventions"] }),
   });
@@ -125,8 +149,10 @@ export function useUpdateIntervention() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<DbIntervention> & { id: string }) => {
-      const { error } = await supabase.from("interventions").update(data).eq("id", id);
-      if (error) throw error;
+      return offlineAware("interventions", "update", data as any, id, async () => {
+        const { error } = await supabase.from("interventions").update(data).eq("id", id);
+        if (error) throw error;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interventions"] }),
   });
@@ -148,9 +174,11 @@ export function useAddDevis() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (devis: Omit<DbDevis, "id" | "created_at" | "updated_at">) => {
-      const { data, error } = await supabase.from("devis").insert(devis).select().single();
-      if (error) throw error;
-      return data;
+      return offlineAware("devis", "insert", devis as any, undefined, async () => {
+        const { data, error } = await supabase.from("devis").insert(devis).select().single();
+        if (error) throw error;
+        return data;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["devis"] }),
   });
@@ -160,8 +188,10 @@ export function useUpdateDevis() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<DbDevis> & { id: string }) => {
-      const { error } = await supabase.from("devis").update(data).eq("id", id);
-      if (error) throw error;
+      return offlineAware("devis", "update", data as any, id, async () => {
+        const { error } = await supabase.from("devis").update(data).eq("id", id);
+        if (error) throw error;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["devis"] }),
   });
@@ -196,9 +226,11 @@ export function useAddAudit() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (audit: Omit<DbAudit, "id" | "created_at">) => {
-      const { data, error } = await supabase.from("audits").insert(audit).select().single();
-      if (error) throw error;
-      return data;
+      return offlineAware("audits", "insert", audit as any, undefined, async () => {
+        const { data, error } = await supabase.from("audits").insert(audit).select().single();
+        if (error) throw error;
+        return data;
+      });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["audits"] }),
   });
